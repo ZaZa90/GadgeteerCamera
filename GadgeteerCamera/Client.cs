@@ -78,26 +78,29 @@ namespace GadgeteerCamera
         {
             Debug.Print("[SERVER] " + response.StatusCode + "," + response.Text);
             if (response.StatusCode == "200")
-            {
-                String operation = (String)GetXmlElement(response.Text.ToString());
+            {   
+                
+                String operation = (String)GetXmlElement(response.Text.ToString());   
+                String angle = operation.Substring(1);
                 Debug.Print("[SERVER] " + operation);
+                
                 if(operation.Equals("ERROR"))
                     currentOperation = Operation.ERROR;
-                else if (operation.Equals("FORWARD"))
+                else if (operation[0].Equals("F"))
                     currentOperation = Operation.FORWARD;
-                else if (operation.Equals("LEFT"))
+                else if (operation[0].Equals("L"))
                     currentOperation = Operation.LEFT;
                 else if (operation.Equals("NULL"))
                     currentOperation = Operation.NULL;
                 else if (operation.Equals("PICTURE"))
                     currentOperation = Operation.PICTURE;
-                else if (operation.Equals("RIGHT"))
+                else if (operation[0].Equals("R"))
                     currentOperation = Operation.RIGHT;
                 else if (operation.Equals("STOP"))
                     currentOperation = Operation.STOP;
                 else if (operation.Equals("FORWARD2"))
                     currentOperation = Operation.FORWARD2;
-                else if (operation.Equals("BACKWARD2"))
+                else if (operation.Equals("B"))
                     currentOperation = Operation.BACKWARD2;
                 else if (operation.Equals("RIGHT2"))
                     currentOperation = Operation.RIGHT2;
