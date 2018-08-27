@@ -22,7 +22,7 @@ namespace GadgeteerCamera
         GT.Timer timer;
 
         //client
-        Client client;
+        static Client client;
 
         //Wifi
         Network network;
@@ -34,7 +34,7 @@ namespace GadgeteerCamera
         BreakOut breakOut;
 
         //motor
-        Motor motor;
+        static Motor motor;
 
         //directions
         static Operation currentOperation;
@@ -42,7 +42,6 @@ namespace GadgeteerCamera
         //flags
         static Boolean isChecking;
         static Boolean isTakingPicture;
-
 
         void ProgramStarted()
         {
@@ -56,6 +55,7 @@ namespace GadgeteerCamera
 
             //client
             client = new Client(multicolorLED2);
+//            client.ConnectionEnd += c_ConnectionEnd;
 
             //network 
             network = new Network();
@@ -78,7 +78,7 @@ namespace GadgeteerCamera
             //timer.Tick += operation_timer;
 
             //pictures
-            picture = new Picture(multicolorLED);
+            picture = new Picture(multicolorLED2);
 
             //breakout
             breakOut = new BreakOut();
@@ -95,6 +95,11 @@ namespace GadgeteerCamera
         {
         }
 
+//        static void c_ConnectionEnd(object sender, EventArgs e)
+//        {
+//            string conf = motor.getSlowSpeed().ToString() + "," + motor.getHighSpeed().ToString() + "," + motor.getLimitLines().ToString() + "," + motor.getTurnDeviation().ToString();
+//            client.sendConfHTTP(conf);
+//        }
 
         private void wifi_NetworkDown(GTM.Module.NetworkModule sender, GTM.Module.NetworkModule.NetworkState state)
         {
@@ -106,8 +111,21 @@ namespace GadgeteerCamera
         {
 
             network.ConnectWIFI();
-            client.SendIpHTTP(network.getIp());
-            multicolorLED.TurnGreen();
+            if (network.getIp() != "0.0.0.0")
+            {
+                multicolorLED.TurnGreen();
+                client.SendIpHTTP(network.getIp());
+                
+                Thread t_op = new Thread(threadSendConfig);
+                t_op.Start();
+            }
+        }
+
+        private void threadSendConfig()
+        {
+            while (client.isProcessing()) ;
+            string conf = motor.getSlowSpeed().ToString("F2") + "," + motor.getHighSpeed().ToString("F2") + "," + motor.getLimitLines().ToString("F2") + "," + motor.getTurnDeviation().ToString("F2");
+            client.sendConfHTTP(conf);
         }
 
         private void button_ButtonReleased(Button sender, Button.ButtonState state)
@@ -116,113 +134,115 @@ namespace GadgeteerCamera
 
         private void button_ButtonPressed(Button sender, Button.ButtonState state)
         {
-            Thread t_op = new Thread(operationLoop);
+            Thread t_op = new Thread(takePicAndGo);
             t_op.Start();
         }
 
-
-        //
-        private void operationLoop()
+        private void takePicAndGo()
         {
-            Thread t_co;
-            //Thread t_cl;
-            while (!currentOperation.Equals(Operation.STOP))
+            if (!isTakingPicture)
             {
-                while (isChecking) ; //wait end of checkingOperation thread to continue
-                multicolorLED.TurnBlue();
-                client.RecvOperation();
-                isChecking = true; //isChecking set here to avoid race condition
-                t_co = new Thread(checkOperation);
-                t_co.Start();
-                multicolorLED.TurnGreen();
+                //takePicture();
             }
+            operationLoop();
         }
 
-        private void checkOperation()
+        private void operationLoop()
         {
-            isChecking = true; // really not necessary
             Thread t;
+            //Thread t_cl;
+            multicolorLED2.TurnBlue();
+            client.RecvOperation();
             Debug.Print("[PROGRAM] waiting server response");
             while (client.isProcessing()) ; //wait the client receive the operation type from server to continue
-            currentOperation = client.getOperation(); //read the operation received before
-            Debug.Print("[PROGRAM] Operation: " + currentOperation);
+            while (client.getOperation() != Operation.NULL)
+            {
+                multicolorLED2.TurnWhite();
+                currentOperation = client.getOperation(); //read the operation received before
+                Debug.Print("[PROGRAM] Operation: " + currentOperation);
 
-            if (currentOperation.Equals(Operation.PICTURE))
-            {
-                //since picture requires network can't read next op until this finish
-                isTakingPicture = true; //isTakingPicture set here to avoid race condition
-                t = new Thread(takePicture);
-                t.Start();
-                while (isTakingPicture) ;
-                currentOperation = Operation.NULL;
-            }
+                if (currentOperation == Operation.PICTURE)
+                {
+                    Debug.Print("WE ARE TAKING PIC! SAY CHEEEESE");
+                    //since picture requires network can't read next op until this finish
+                    isTakingPicture = true; //isTakingPicture set here to avoid race condition
+                    t = new Thread(takePicture);
+                    t.Start();
+                    while (isTakingPicture) ;
+                    currentOperation = Operation.NULL;
+                }
 
-            else if (currentOperation.Equals(Operation.STOP))
-            {
-                t = new Thread(motor.moveStop);
-                t.Start();
-                currentOperation = Operation.NULL;
-            }
+                //else if (currentOperation.Equals(Operation.STOP))
+                //{
+                //    t = new Thread(motor.moveStop);
+                //    t.Start();
+                //    currentOperation = Operation.NULL;
+                //}
 
-            else if (currentOperation.Equals(Operation.FORWARD))
-            {
-                t = new Thread(motor.moveForward);
-                t.Start();
-                currentOperation = Operation.NULL;
-            }
+                else if (currentOperation == Operation.FORWARD)
+                {
+                    t = new Thread(motor.moveForward);
+                    t.Start();
+                    currentOperation = Operation.NULL;
+                }
 
-            else if (currentOperation.Equals(Operation.RIGHT))
-            {
-                t = new Thread(motor.moveRight);
-                t.Start();
-                currentOperation = Operation.NULL;
-            }
-            else if (currentOperation.Equals(Operation.LEFT))
-            {
-                t = new Thread(motor.moveLeft);
-                t.Start();
-                currentOperation = Operation.NULL;
-            }
+                else if (currentOperation == Operation.RIGHT)
+                {
+                    t = new Thread(motor.moveRight);
+                    t.Start();
+                    currentOperation = Operation.NULL;
+                }
+                else if (currentOperation == Operation.LEFT)
+                {
+                    t = new Thread(motor.moveLeft);
+                    t.Start();
+                    currentOperation = Operation.NULL;
+                }
 
-            else if (currentOperation.Equals(Operation.FORWARD2))
-            {
-                t = new Thread(motor.moveForward2);
-                t.Start();
-                currentOperation = Operation.NULL;
-            }
+                else if (currentOperation == Operation.FORWARD2)
+                {
+                    t = new Thread(motor.moveForward2);
+                    t.Start();
+                    currentOperation = Operation.NULL;
+                }
 
-            else if (currentOperation.Equals(Operation.RIGHT2))
-            {
-                t = new Thread(motor.moveRight2);
-                t.Start();
-                currentOperation = Operation.NULL;
-            }
-            else if (currentOperation.Equals(Operation.LEFT2))
-            {
-                t = new Thread(motor.moveLeft2);
-                t.Start();
-                currentOperation = Operation.NULL;
-            }
+                else if (currentOperation == Operation.RIGHT2)
+                {
+                    t = new Thread(motor.moveRight2);
+                    t.Start();
+                    currentOperation = Operation.NULL;
+                }
+                else if (currentOperation == Operation.LEFT2)
+                {
+                    t = new Thread(motor.moveLeft2);
+                    t.Start();
+                    currentOperation = Operation.NULL;
+                }
 
-            else if (currentOperation.Equals(Operation.BACKWARD2))
-            {
-                t = new Thread(motor.moveBackward2);
-                t.Start();
-                currentOperation = Operation.NULL;
-            }
+                else if (currentOperation == Operation.BACKWARD2)
+                {
+                    t = new Thread(motor.moveBackward2);
+                    t.Start();
+                    currentOperation = Operation.NULL;
+                }
 
-            while (motor.isMoving()) ;
-            isChecking = false;
+                while (motor.isMoving()) ;
+                multicolorLED2.TurnBlue();
+                client.RecvOperation();
+                Debug.Print("[PROGRAM] waiting server response");
+                while (client.isProcessing()) ; //wait the client receive the operation type from server to continue
+            }
+            multicolorLED2.TurnGreen();
         }
 
         private void takePicture()
         {
             isTakingPicture = true;
-            multicolorLED2.TurnBlue();
 
             //wait camera is ready
             while (!camera.CameraReady) ;
 
+            Debug.Print("[CAMERA] Try taking photo");
             //1st attempt
             camera.TakePicture(); //this cause the picture handler activation
 
@@ -232,8 +252,8 @@ namespace GadgeteerCamera
             for (int recgn = 0; recgn < 4; recgn++)
             {
                 multicolorLED2.TurnBlue();
-                Debug.Print("[CAMERA] Retry " + recgn + "/5");
                 while (client.isProcessing()) ;
+                Debug.Print("[CAMERA] Retry: " + (recgn + 1) + "/5");
 
                 if (!client.isRecognized())
                 {

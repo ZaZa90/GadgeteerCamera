@@ -13,7 +13,7 @@ namespace GadgeteerCamera
     class Client
     {
 
-        private const string serverIp = "192.168.0.100";
+        private const string serverIp = "192.168.1.100";
         private const string serverPort = "8080";
         private const string serverAddress = "http://" + serverIp + ":" + serverPort + "/Service.svc/";
         private Byte[] pictureBytes;
@@ -33,6 +33,26 @@ namespace GadgeteerCamera
             this.multicolorLED2 = multicolorLED2;
         }
 
+//        protected virtual void OnConnectionEnd(EventArgs e)
+//        {
+//            EventHandler handler = ConnectionEnd;
+//            if (handler != null)
+//            {
+//                handler(this, e);
+//            }
+//        }
+
+//        public event EventHandler ConnectionEnd;
+
+        public void sendConfHTTP(string conf)
+        {
+            setProcessing(true);
+            POSTContent emptyPost = new POSTContent();
+            var req = HttpHelper.CreateHttpPostRequest(serverAddress + "conf/" + conf, emptyPost, null);
+            req.ResponseReceived += new HttpRequest.ResponseHandler(req_ConfResponseReceived);
+            req.SendRequest();
+            Debug.Print("[CLIENT] " + serverAddress + "conf/" + conf);
+        }
 
         public void SendIpHTTP(string ip)
         {
@@ -89,25 +109,33 @@ namespace GadgeteerCamera
         }
 
 
-       /* public void SendPictureHTTP(string part, string totParts, string pictureCode)
-        {
+        /* public void SendPictureHTTP(string part, string totParts, string pictureCode)
+         {
 
-            string xml = "<string xmlns=" + '"' + "http://schemas.microsoft.com/2003/10/Serialization/" + '"' +
-                ">" + pictureCode + "</string>";
-            POSTContent postContent = POSTContent.CreateTextBasedContent(xml);
+             string xml = "<string xmlns=" + '"' + "http://schemas.microsoft.com/2003/10/Serialization/" + '"' +
+                 ">" + pictureCode + "</string>";
+             POSTContent postContent = POSTContent.CreateTextBasedContent(xml);
 
-            var req =
-                HttpHelper.CreateHttpPostRequest(serverAddress + "picturePart/" + part + "/" + totParts, postContent, "application/xml");
-            req.SendRequest();
-        }*/
+             var req =
+                 HttpHelper.CreateHttpPostRequest(serverAddress + "picturePart/" + part + "/" + totParts, postContent, "application/xml");
+             req.SendRequest();
+         }*/
 
         private void req_ResponseReceived(HttpRequest sender, HttpResponse response)
         {
             Debug.Print("[SERVER] " + response.StatusCode + "," + response.Text);
+            if (response.StatusCode == "200") multicolorLED2.TurnGreen();
+            setProcessing(false);
+//            OnConnectionEnd(EventArgs.Empty);
+        }
+
+        private void req_ConfResponseReceived(HttpRequest sender, HttpResponse response)
+        {
+            Debug.Print("[SERVER] " + response.StatusCode + "," + response.Text);
+            if (response.StatusCode == "200") multicolorLED2.TurnGreen();
             setProcessing(false);
         }
 
-        
         public void sendPictureTCP(byte[] pictureBytes)
         {
 

@@ -16,11 +16,22 @@ namespace GadgeteerCamera
         //IR Sensors Variables
         private int rfSensor, lfSensor, rbSensor, lbSensor;
         //Configuration Variables
-        private const float limitLine = 5; // Number of lines between QR codes
-        private const float regimeSlowSpeed = (float)0.1; // Motor speed in stop state
-        private const float regimeHighSpeed = (float)0.35; // Motor speed in mobile state
-        private const float turnDeviation = (float)0.8; // Deviation factor for speed during turns
+        private static int limitLine = 5; // Number of lines between QR codes
+        private static float regimeSlowSpeed = (float)0.1; // Motor speed in stop state
+        private static float regimeHighSpeed = (float)0.35; // Motor speed in mobile state
+        private static float turnDeviation = (float)0.8; // Deviation factor for speed during turns following line
 
+        public void setSlowSpeed(float s) { regimeSlowSpeed = s; }
+        public float getSlowSpeed() { return regimeSlowSpeed; }
+
+        public void setHighSpeed(float s) { regimeHighSpeed = s; }
+        public float getHighSpeed() { return regimeHighSpeed; }
+
+        public void setLimitLines(int l) { limitLine = l; }
+        public int getLimitLines() { return limitLine; }
+
+        public void setTurnDeviation(float d) { turnDeviation = d; }
+        public float getTurnDeviation() { return turnDeviation; }
 
         public bool isMoving() { return moving; }
 
@@ -73,8 +84,8 @@ namespace GadgeteerCamera
         {
             rfSensor = (RightForward && breakOut.rightForwardSensor.Read()) ? 1 : -1;
             lfSensor = (LeftForward && breakOut.leftForwardSensor.Read()) ? 1 : -1;
-            rbSensor = (RightBackward && breakOut.rightBackwardSensor.Read()) ? 1 : -1;
-            lbSensor = (LeftBackward && breakOut.leftBackwardSensor.Read()) ? 1 : -1;
+            //rbSensor = (RightBackward && breakOut.rightBackwardSensor.Read()) ? 1 : -1;
+            //lbSensor = (LeftBackward && breakOut.leftBackwardSensor.Read()) ? 1 : -1;
         }
 
         public void moveForward()
@@ -91,7 +102,7 @@ namespace GadgeteerCamera
         {
             stop = false;
             //Debug.Print("[MOTOR] move right");
-            MoveSpeedTiming((float)0.4, (float)-0.4, 1, 0);
+            MoveSpeedTiming((float)0.5, (float)-0.5, 1, 0);
         }
 
 
@@ -99,7 +110,7 @@ namespace GadgeteerCamera
         {
             stop = false;
             //Debug.Print("[MOTOR] move right");
-            MoveSpeedTiming((float)-0.4, (float)0.4, 1, 0);
+            MoveSpeedTiming((float)-0.5, (float)0.5, 1, 0);
         }
 
 
@@ -107,7 +118,8 @@ namespace GadgeteerCamera
         {
             moving = true;
             stop = false;
-            MoveSpeedTiming((float)0.4, (float)0.4, 3, 0);
+            //MoveSpeedTiming((float)0.3, (float)0.4, 3, 0);
+            MoveSpeedTiming((float)0.5, (float)0.5, 3, 0);
             moving = false;
 
         }
@@ -116,7 +128,7 @@ namespace GadgeteerCamera
         {
             moving = true;
             stop = false;
-            MoveSpeedTiming((float)0.4, (float)-0.4, 3, 0);
+            MoveSpeedTiming((float)0.5, (float)-0.5, 3, 0);
             moving = false;
 
         }
@@ -125,7 +137,7 @@ namespace GadgeteerCamera
         {
             moving = true;
             stop = false;
-            MoveSpeedTiming(-(float)0.4, +(float)0.4, 3, 0);
+            MoveSpeedTiming(-(float)0.5, +(float)0.5, 3, 0);
             moving = false;
 
         }
@@ -134,7 +146,7 @@ namespace GadgeteerCamera
         {
             moving = true;
             stop = false;
-            MoveSpeedTiming(-(float)0.4, -(float)0.4, 3, 0);
+            MoveSpeedTiming(-(float)0.5, -(float)0.5, 3, 0);
             moving = false;
 
         }
@@ -146,7 +158,7 @@ namespace GadgeteerCamera
             multicolorLED2.TurnBlue();
             float currentSpeedR = 0;
             float currentSpeedL = 0;
-
+            
             Thread t_fwdSensor = new Thread(ForwardSensorThread);
             t_fwdSensor.Start();
 
@@ -261,12 +273,15 @@ namespace GadgeteerCamera
         public void ForwardSensorThread()
         {
             stop = false;
+            int cnt = 0;
             while (!stop)
             {
                 Debug.Print("[MOTOR T2] FR: " + breakOut.rightForwardSensor.Read() + " FL: " + breakOut.leftForwardSensor.Read());
                 if (breakOut.rightForwardSensor.Read() && breakOut.leftForwardSensor.Read())
                 {
-                    stop = true;
+                    cnt++;
+                    Debug.Print("[MOTOR] Road Checkpoint"+cnt+" detected");
+                    if (cnt>9) stop = true;
                 }
             }
             Debug.Print("[MOTOR] stop detected");
@@ -278,9 +293,9 @@ namespace GadgeteerCamera
             while (true)
             {
                 int cnt = 0;
-                while (breakOut.rightForwardSensor.Read() && breakOut.rightBackwardSensor.Read() && breakOut.leftBackwardSensor.Read() && breakOut.leftForwardSensor.Read())
+                while (breakOut.rightForwardSensor.Read() && breakOut.leftForwardSensor.Read())
                 {
-                    if (cnt > 2)
+                    if (cnt > 9)
                     {
                         stop = true;
                         break;
@@ -288,7 +303,7 @@ namespace GadgeteerCamera
                     cnt++;
                 }
 
-                if (cnt > 2)
+                if (cnt > 9)
                 {
                     stop = true;
                     break;
