@@ -6,7 +6,7 @@ using GTM = Gadgeteer.Modules;
 using Gadgeteer.Modules.GHIElectronics;
 using System;
 
-public enum Operation { STOP, FORWARD, RIGHT, LEFT, PICTURE, NULL, ERROR, FORWARD2, BACKWARD2, RIGHT2, LEFT2 };
+// public enum Operation { STOP, FORWARD, RIGHT, LEFT, PICTURE, NULL, ERROR, FORWARD2, BACKWARD2, RIGHT2, LEFT2 };
 
 namespace GadgeteerCamera
 {
@@ -37,7 +37,7 @@ namespace GadgeteerCamera
         Motor motor;
 
         //directions
-        static Operation currentOperation;
+        static String currentOperation;
 
         //flags
         static Boolean isChecking;
@@ -67,7 +67,7 @@ namespace GadgeteerCamera
 
 
             //init operation
-            currentOperation = Operation.NULL;
+            currentOperation = "NULL";
 
             //leds
             multicolorLED.TurnRed(); //network off
@@ -126,7 +126,7 @@ namespace GadgeteerCamera
         {
             Thread t_co;
             //Thread t_cl;
-            while (!currentOperation.Equals(Operation.STOP))
+            while (!currentOperation.Equals("STOP"))
             {
                 while (isChecking) ; //wait end of checkingOperation thread to continue
                 multicolorLED.TurnBlue();
@@ -145,46 +145,50 @@ namespace GadgeteerCamera
             Debug.Print("[PROGRAM] waiting server response");
             while (client.isProcessing()) ; //wait the client receive the operation type from server to continue
             currentOperation = client.getOperation(); //read the operation received before
+            String angle = currentOperation.Substring(1);
+
             Debug.Print("[PROGRAM] Operation: " + currentOperation);
 
-            if (currentOperation.Equals(Operation.PICTURE))
+            if (currentOperation.Equals("PICT"))
             {
                 //since picture requires network can't read next op until this finish
                 isTakingPicture = true; //isTakingPicture set here to avoid race condition
                 t = new Thread(takePicture);
                 t.Start();
                 while (isTakingPicture) ;
-                currentOperation = Operation.NULL;
+                currentOperation = "NULL";
             }
 
-            else if (currentOperation.Equals(Operation.STOP))
+            else if (currentOperation.Equals("STOP"))
             {
                 t = new Thread(motor.moveStop);
                 t.Start();
-                currentOperation = Operation.NULL;
+                currentOperation = "NULL";
             }
 
-            else if (currentOperation.Equals(Operation.FORWARD))
+            else if (currentOperation[0].Equals("F"))
             {
                 t = new Thread(motor.moveForward);
                 t.Start();
-                currentOperation = Operation.NULL;
+                currentOperation = "NULL";
             }
 
-            else if (currentOperation.Equals(Operation.RIGHT))
+            else if (currentOperation[0].Equals("R"))
             {
+                motor.angle = int.Parse(angle);
                 t = new Thread(motor.moveRight);
                 t.Start();
-                currentOperation = Operation.NULL;
+                currentOperation = "NULL";
             }
-            else if (currentOperation.Equals(Operation.LEFT))
+            else if (currentOperation[0].Equals("L"))
             {
+                motor.angle = int.Parse(angle);
                 t = new Thread(motor.moveLeft);
                 t.Start();
-                currentOperation = Operation.NULL;
+                currentOperation = "NULL";
             }
 
-            else if (currentOperation.Equals(Operation.FORWARD2))
+            /*else if (currentOperation.Equals(Operation.FORWARD2))
             {
                 t = new Thread(motor.moveForward2);
                 t.Start();
@@ -202,13 +206,13 @@ namespace GadgeteerCamera
                 t = new Thread(motor.moveLeft2);
                 t.Start();
                 currentOperation = Operation.NULL;
-            }
+            }*/
 
-            else if (currentOperation.Equals(Operation.BACKWARD2))
+            else if (currentOperation[0].Equals("B"))
             {
                 t = new Thread(motor.moveBackward2);
                 t.Start();
-                currentOperation = Operation.NULL;
+                currentOperation = "NULL";
             }
 
             while (motor.isMoving()) ;

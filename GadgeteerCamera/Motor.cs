@@ -12,6 +12,7 @@ namespace GadgeteerCamera
         private BreakOut breakOut;
         private bool stop;
         private bool moving;
+        public int angle;
         private MulticolorLED multicolorLED2;
         //IR Sensors Variables
         private int rfSensor, lfSensor, rbSensor, lbSensor;
@@ -86,20 +87,24 @@ namespace GadgeteerCamera
             //Debug.Print("[MOTOR] FR: " + breakOut.rightForwardSensor.Read() + " FL: " + breakOut.leftForwardSensor.Read() + " BR: " + breakOut.rightBackwardSensor.Read() + " BL: " + breakOut.leftBackwardSensor.Read());
         }
 
-
+        // angle for rotation
         public void moveRight()
         {
             stop = false;
+            int time_s = 1;
             //Debug.Print("[MOTOR] move right");
-            MoveSpeedTiming((float)0.4, (float)-0.4, 1, 0);
+            // inserire la proporzione qui e aggiungerla a time
+            MoveSpeedTiming((float)0.4, (float)-0.4, time_s, 0);
+            
         }
-
 
         internal void moveLeft()
         {
             stop = false;
+            int time_s = 1;
             //Debug.Print("[MOTOR] move right");
-            MoveSpeedTiming((float)-0.4, (float)0.4, 1, 0);
+            // inserire la proporzione qui e aggiungerla a time
+            MoveSpeedTiming((float)-0.4, (float)0.4, time_s, 0);
         }
 
 

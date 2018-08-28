@@ -20,12 +20,12 @@ namespace GadgeteerCamera
         private Gadgeteer.Modules.GHIElectronics.MulticolorLED multicolorLED2;
         private static Boolean processing;
         private static Boolean pictureRecognized;
-        private static Operation currentOperation;
+        private static String currentOperation;
 
         public Boolean isProcessing(){ return processing; }
         public Boolean isRecognized(){ return pictureRecognized; }
         public void setProcessing(Boolean b) { processing = b; }
-        public Operation getOperation() { return currentOperation; }
+        public String getOperation() { return currentOperation; }
 
 
         public Client(Gadgeteer.Modules.GHIElectronics.MulticolorLED multicolorLED2)
@@ -60,11 +60,11 @@ namespace GadgeteerCamera
             if (response.StatusCode == "200")
             {   
                 
-                String operation = (String)GetXmlElement(response.Text.ToString());   
-                String angle = operation.Substring(1);
+                String operation = (String)GetXmlElement(response.Text.ToString());
+                currentOperation = operation; 
                 Debug.Print("[SERVER] " + operation);
                 
-                if(operation.Equals("ERROR"))
+                /*if(operation.Equals("ERROR"))
                     currentOperation = Operation.ERROR;
                 else if (operation[0].Equals("F"))
                     currentOperation = Operation.FORWARD;
@@ -72,7 +72,7 @@ namespace GadgeteerCamera
                     currentOperation = Operation.LEFT;
                 else if (operation.Equals("NULL"))
                     currentOperation = Operation.NULL;
-                else if (operation.Equals("PICTURE"))
+                else if (operation.Equals("PICT"))
                     currentOperation = Operation.PICTURE;
                 else if (operation[0].Equals("R"))
                     currentOperation = Operation.RIGHT;
@@ -85,7 +85,7 @@ namespace GadgeteerCamera
                 else if (operation.Equals("RIGHT2"))
                     currentOperation = Operation.RIGHT2;
                 else if (operation.Equals("LEFT2"))
-                    currentOperation = Operation.LEFT2;
+                    currentOperation = Operation.LEFT2;*/
 
             }
             setProcessing(false);
