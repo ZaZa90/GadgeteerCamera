@@ -12,8 +12,8 @@ namespace GadgeteerCamera
         Gadgeteer.Modules.GHIElectronics.WiFiRS21 wifiRS21;
 
         //Network info
-        private static string SSID = "Spider-Car-Wifi";
-        private static string PASSWORD = "as12df34gh56";
+        private static string SSID = "Telecom-56888096";
+        private static string PASSWORD = "Y9jc8D9FqXIhpnAj1mSs3uuz";
         private static string ip = "0.0.0.0";
         private static string dns = "0.0.0.0";
         private static string dns2 = "0.0.0.0";
