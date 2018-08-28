@@ -6,7 +6,7 @@ using GTM = Gadgeteer.Modules;
 using Gadgeteer.Modules.GHIElectronics;
 using System;
 
-public enum Operation { STOP, FORWARD, RIGHT, LEFT, PICTURE, NULL, ERROR, FORWARD2, BACKWARD2, RIGHT2, LEFT2 };
+// public enum Operation { STOP, FORWARD, RIGHT, LEFT, PICTURE, NULL, ERROR, FORWARD2, BACKWARD2, RIGHT2, LEFT2 };
 
 namespace GadgeteerCamera
 {
@@ -37,7 +37,7 @@ namespace GadgeteerCamera
         static Motor motor;
 
         //directions
-        static Operation currentOperation;
+        static String currentOperation;
 
         //flags
         static Boolean isChecking;
@@ -67,7 +67,7 @@ namespace GadgeteerCamera
 
 
             //init operation
-            currentOperation = Operation.NULL;
+            currentOperation = "NULL";
 
             //leds
             multicolorLED.TurnRed(); //network off
@@ -144,7 +144,7 @@ namespace GadgeteerCamera
             {
                 //takePicture();
             }
-            operationLoop();
+            while (!currentOperation.Equals("STOP")) operationLoop();
         }
 
         private void operationLoop()
@@ -155,76 +155,78 @@ namespace GadgeteerCamera
             client.RecvOperation();
             Debug.Print("[PROGRAM] waiting server response");
             while (client.isProcessing()) ; //wait the client receive the operation type from server to continue
-            while (client.getOperation() != Operation.NULL)
+
+            multicolorLED2.TurnWhite();
+            currentOperation = client.getOperation(); //read the operation received before
+            String angle = currentOperation.Substring(1);
+
+            Debug.Print("[PROGRAM] Operation: " + currentOperation);
+
+            if (currentOperation.Equals("PICT"))
             {
-                multicolorLED2.TurnWhite();
-                currentOperation = client.getOperation(); //read the operation received before
-                Debug.Print("[PROGRAM] Operation: " + currentOperation);
+                //since picture requires network can't read next op until this finish
+                isTakingPicture = true; //isTakingPicture set here to avoid race condition
+                t = new Thread(takePicture);
+                t.Start();
+                while (isTakingPicture) ;
+                currentOperation = "NULL";
+            }
 
-                if (currentOperation == Operation.PICTURE)
-                {
-                    Debug.Print("WE ARE TAKING PIC! SAY CHEEEESE");
-                    //since picture requires network can't read next op until this finish
-                    isTakingPicture = true; //isTakingPicture set here to avoid race condition
-                    t = new Thread(takePicture);
-                    t.Start();
-                    while (isTakingPicture) ;
-                    currentOperation = Operation.NULL;
-                }
+            else if (currentOperation.Equals("STOP"))
+            {
+                t = new Thread(motor.moveStop);
+                t.Start();
+                currentOperation = "NULL";
+            }
 
-                //else if (currentOperation.Equals(Operation.STOP))
-                //{
-                //    t = new Thread(motor.moveStop);
-                //    t.Start();
-                //    currentOperation = Operation.NULL;
-                //}
+            else if (currentOperation[0].Equals("F"))
+            {
+                t = new Thread(motor.moveForward);
+                t.Start();
+                currentOperation = "NULL";
+            }
 
-                else if (currentOperation == Operation.FORWARD)
-                {
-                    t = new Thread(motor.moveForward);
-                    t.Start();
-                    currentOperation = Operation.NULL;
-                }
+            else if (currentOperation[0].Equals("R"))
+            {
+                motor.angle = int.Parse(angle);
+                t = new Thread(motor.moveRight);
+                t.Start();
+                currentOperation = "NULL";
+            }
+            else if (currentOperation[0].Equals("L"))
+            {
+                motor.angle = int.Parse(angle);
+                t = new Thread(motor.moveLeft);
+                t.Start();
+                currentOperation = "NULL";
+            }
 
-                else if (currentOperation == Operation.RIGHT)
-                {
-                    t = new Thread(motor.moveRight);
-                    t.Start();
-                    currentOperation = Operation.NULL;
-                }
-                else if (currentOperation == Operation.LEFT)
-                {
-                    t = new Thread(motor.moveLeft);
-                    t.Start();
-                    currentOperation = Operation.NULL;
-                }
+            /*else if (currentOperation.Equals(Operation.FORWARD2))
+            {
+                t = new Thread(motor.moveForward2);
+                t.Start();
+                currentOperation = Operation.NULL;
+            }
 
-                else if (currentOperation == Operation.FORWARD2)
-                {
-                    t = new Thread(motor.moveForward2);
-                    t.Start();
-                    currentOperation = Operation.NULL;
-                }
+            else if (currentOperation.Equals(Operation.RIGHT2))
+            {
+                t = new Thread(motor.moveRight2);
+                t.Start();
+                currentOperation = Operation.NULL;
+            }
+            else if (currentOperation.Equals(Operation.LEFT2))
+            {
+                t = new Thread(motor.moveLeft2);
+                t.Start();
+                currentOperation = Operation.NULL;
+            }*/
 
-                else if (currentOperation == Operation.RIGHT2)
-                {
-                    t = new Thread(motor.moveRight2);
-                    t.Start();
-                    currentOperation = Operation.NULL;
-                }
-                else if (currentOperation == Operation.LEFT2)
-                {
-                    t = new Thread(motor.moveLeft2);
-                    t.Start();
-                    currentOperation = Operation.NULL;
-                }
-
-                else if (currentOperation == Operation.BACKWARD2)
-                {
-                    t = new Thread(motor.moveBackward2);
-                    t.Start();
-                    currentOperation = Operation.NULL;
-                }
+            else if (currentOperation[0].Equals("B"))
+            {
+                t = new Thread(motor.moveBackward2);
+                t.Start();
+                currentOperation = "NULL";
+            }
 
                 while (motor.isMoving()) ;
                 multicolorLED2.TurnBlue();
