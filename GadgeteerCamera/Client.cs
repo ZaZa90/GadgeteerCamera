@@ -83,8 +83,8 @@ namespace GadgeteerCamera
                 String operation = (String)GetXmlElement(response.Text.ToString());   
                 String angle = operation.Substring(1);
                 Debug.Print("[SERVER] " + operation);
-
-                if (operation.Equals("ERROR"))
+                
+                if(operation.Equals("ERROR"))
                     currentOperation = Operation.ERROR;
                 else if (operation[0].Equals("F"))
                     currentOperation = Operation.FORWARD;
@@ -106,8 +106,7 @@ namespace GadgeteerCamera
                     currentOperation = Operation.RIGHT2;
                 else if (operation.Equals("LEFT2"))
                     currentOperation = Operation.LEFT2;
-                else if (operation[0].Equals("C"))
-                    currentOperation = Operation.CONFIGURE;
+
             }
             setProcessing(false);
         }
