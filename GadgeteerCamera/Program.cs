@@ -6,7 +6,7 @@ using GTM = Gadgeteer.Modules;
 using Gadgeteer.Modules.GHIElectronics;
 using System;
 
-public enum Operation { STOP, FORWARD, RIGHT, LEFT, PICTURE, NULL, ERROR, FORWARD2, BACKWARD2, RIGHT2, LEFT2 };
+public enum Operation { STOP, FORWARD, RIGHT, LEFT, PICTURE, NULL, ERROR, FORWARD2, BACKWARD2, RIGHT2, LEFT2, CONFIGURE };
 
 namespace GadgeteerCamera
 {
