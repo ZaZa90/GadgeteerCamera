@@ -254,15 +254,26 @@ namespace GadgeteerCamera
         private void configure()
         {
             String[] conf = currentOperation.Substring(1).Split('/');
-            Debug.Print("[PROGRAM] SET SlowSpeed to "+ (float)Double.Parse(conf[0]));
-            motor.setSlowSpeed((float)Double.Parse(conf[0]));
-            Debug.Print("[PROGRAM] SET HighSpeed to " + (float)Double.Parse(conf[1]));
-            motor.setHighSpeed((float)Double.Parse(conf[1]));
-            Debug.Print("[PROGRAM] SET LimitLines to " + conf[2]);
-            motor.setLimitLines((int)Double.Parse(conf[2]));
-            Debug.Print("[PROGRAM] SET TurnDeviation to " + (float)Double.Parse(conf[3]));
-            motor.setTurnDeviation((float)Double.Parse(conf[3]));
-
+            if (conf[0] != "0.00")
+            {
+                Debug.Print("[PROGRAM] SET SlowSpeed to " + (float)Double.Parse(conf[0]));
+                motor.setSlowSpeed((float)Double.Parse(conf[0]));
+            }
+            if (conf[1] != "0.00")
+            {
+                Debug.Print("[PROGRAM] SET HighSpeed to " + (float)Double.Parse(conf[1]));
+                motor.setHighSpeed((float)Double.Parse(conf[1]));
+            }
+            if (conf[2] != "0.00")
+            {
+                Debug.Print("[PROGRAM] SET LimitLines to " + conf[2]);
+                motor.setLimitLines((int)Double.Parse(conf[2]));
+            }
+            if (conf[3] != "0.00")
+            {
+                Debug.Print("[PROGRAM] SET TurnDeviation to " + (float)Double.Parse(conf[3]));
+                motor.setTurnDeviation((float)Double.Parse(conf[3]));
+            }
         }
 
         private void takePicture()
