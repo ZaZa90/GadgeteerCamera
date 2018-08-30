@@ -2,6 +2,7 @@ using Gadgeteer.Modules.GHIElectronics;
 using Microsoft.SPOT;
 using System;
 using System.Threading;
+using Gadgeteer;
 
 namespace GadgeteerCamera
 {
@@ -9,18 +10,23 @@ namespace GadgeteerCamera
     {
 
         private Gadgeteer.Modules.GHIElectronics.MotorDriverL298 motorDriverL298;
+        private Gadgeteer.Timer moveTimer = new Gadgeteer.Timer(100);
+        private Gadgeteer.Timer stopTimer = new Gadgeteer.Timer(200);
+        private float currentSpeedR, currentSpeedL;
+        private int lastAction; // -1:Left 0:Straight 1:Right
         private BreakOut breakOut;
+        private int counter;
         private bool stop;
         private bool moving;
         public int angle;
         private MulticolorLED multicolorLED2;
         //IR Sensors Variables
-        private int rfSensor, lfSensor, rbSensor, lbSensor;
+        private bool rfSensor, lfSensor;
         //Configuration Variables
         private static int limitLine = 5; // Number of lines between QR codes
-        private static float regimeSlowSpeed = (float)0.1; // Motor speed in stop state
-        private static float regimeHighSpeed = (float)0.35; // Motor speed in mobile state
-        private static float turnDeviation = (float)0.8; // Deviation factor for speed during turns following line
+        private static float regimeSlowSpeed = (float)0.3; // Motor speed in stop state
+        private static float regimeHighSpeed = (float)0.5; // Motor speed in mobile state
+        private static float turnDeviation = (float)0.03; // Deviation factor for speed during turns following line
         private static int time_s = 1; // Time to turn by 90 degrees in seconds
       
         public void setSlowSpeed(float s) { regimeSlowSpeed = s; }
@@ -41,6 +47,10 @@ namespace GadgeteerCamera
         {
             this.motorDriverL298 = motorDriverL298;
             this.breakOut = breakOut;
+            this.lastAction = 0;
+            this.counter = 0;
+            this.moveTimer.Tick += new Gadgeteer.Timer.TickEventHandler(moveTimer_Tick);
+            this.stopTimer.Tick += new Gadgeteer.Timer.TickEventHandler(stopTimer_Tick);
         }
 
         public Motor(MotorDriverL298 motorDriverL298, BreakOut breakOut, MulticolorLED multicolorLED2)
@@ -49,54 +59,159 @@ namespace GadgeteerCamera
             this.motorDriverL298 = motorDriverL298;
             this.breakOut = breakOut;
             this.multicolorLED2 = multicolorLED2;
+            this.lastAction = 0;
+            this.counter = 0;
+            this.moveTimer.Tick += new Gadgeteer.Timer.TickEventHandler(moveTimer_Tick);
+            this.stopTimer.Tick += new Gadgeteer.Timer.TickEventHandler(stopTimer_Tick);
+        }
+        void stopTimer_Tick(Gadgeteer.Timer timer)
+        {
+            currentSpeedR -= 0.1f;
+            currentSpeedL -= 0.1f;
+            this.motorDriverL298.SetSpeed(MotorDriverL298.Motor.Motor1, currentSpeedR);
+            this.motorDriverL298.SetSpeed(MotorDriverL298.Motor.Motor2, currentSpeedL);
+            if(currentSpeedR <= regimeSlowSpeed)
+            {
+                currentSpeedR = regimeSlowSpeed;
+                currentSpeedL = regimeSlowSpeed;
+                stopTimer.Stop();
+
+            }
+            Debug.Print("[MOTOR] New Speed - R:"+currentSpeedR+" L:"+currentSpeedL);
         }
 
-        public void move()
+        void moveTimer_Tick(Gadgeteer.Timer timer)
         {
-            int counter = 0;
-            while (true)
+            //readSensors(true, true);
+            if (isMoving())
             {
-                readSensors(true, true, false, false);
-                if (rfSensor == 1 && lfSensor == 1)
+                if (breakOut.rightForwardSensor.Read())
                 {
-                    if (++counter == limitLine)
+                    if (breakOut.leftForwardSensor.Read())
                     {
-                        Debug.Print("[MOTOR] stop");
+                        if (++counter == limitLine)
+                        {
+                            Debug.Print("[MOTOR] STOP");
 
-                        this.motorDriverL298.SetSpeed(MotorDriverL298.Motor.Motor2, regimeSlowSpeed);
-                        this.motorDriverL298.SetSpeed(MotorDriverL298.Motor.Motor1, regimeSlowSpeed);
-                        multicolorLED2.TurnGreen();
-                        counter = 0;
-                        //WE ARE ON QR
-                        return;
+                            this.motorDriverL298.SetSpeed(MotorDriverL298.Motor.Motor2, regimeSlowSpeed);
+                            this.motorDriverL298.SetSpeed(MotorDriverL298.Motor.Motor1, regimeSlowSpeed);
+                            multicolorLED2.TurnGreen();
+                            counter = 0;
+                            //WE ARE ON QR
+                            moveTimer.Stop();
+                            moving = false;
+                        }
+                    }
+                    else
+                    {
+                        if (lastAction == -1)
+                        {
+                            //Changed Direction
+                            Debug.Print("[MOTOR] Change! Previous Action:"+lastAction);
+                            currentSpeedR = regimeHighSpeed;
+                            currentSpeedL = regimeHighSpeed;
+                        }
+                        currentSpeedR -= (currentSpeedR - regimeSlowSpeed) * turnDeviation;
+                        //currentSpeedR = regimeSlowSpeed;
+                        currentSpeedL += (1 - currentSpeedL) * turnDeviation;
+                        Debug.Print("[MOTOR] Turn Right - R:" + currentSpeedR + " L:" + currentSpeedL);
+                        this.motorDriverL298.SetSpeed(MotorDriverL298.Motor.Motor1, currentSpeedR);
+                        this.motorDriverL298.SetSpeed(MotorDriverL298.Motor.Motor2, currentSpeedL);
+                        lastAction = 1;
+                        /* 
+                         //slow right
+                         if (currentSpeedR > regimeSlowSpeed)
+                         {
+                             this.motorDriverL298.SetSpeed(MotorDriverL298.Motor.Motor2, regimeSlowSpeed);
+                             currentSpeedR = regimeSlowSpeed;
+                         }
+
+                         //fast right
+                         else
+                         {
+                             this.motorDriverL298.SetSpeed(MotorDriverL298.Motor.Motor2, regimeHighSpeed);
+                             currentSpeedR = regimeHighSpeed;
+                         } */
                     }
                 }
-                else if(rfSensor == 1)
+                else if (breakOut.leftForwardSensor.Read())
                 {
+                    if (lastAction == 1)
+                    {
+                        //Changed Direction
+                        Debug.Print("[MOTOR] Change!");
+                        currentSpeedR = regimeHighSpeed;
+                        currentSpeedL = regimeHighSpeed;
+                    }
+                    currentSpeedR += (1 - currentSpeedR) * turnDeviation;
+                    currentSpeedL -= (currentSpeedL - regimeSlowSpeed) * turnDeviation;
+                    //currentSpeedL = regimeSlowSpeed;
+                    Debug.Print("[MOTOR] Turn Left - R:" + currentSpeedR + " L:" + currentSpeedL);
+                    this.motorDriverL298.SetSpeed(MotorDriverL298.Motor.Motor1, currentSpeedR);
+                    this.motorDriverL298.SetSpeed(MotorDriverL298.Motor.Motor2, currentSpeedL);
+                    lastAction = -1;
+                    /*
+                    //slow left
+                    if (currentSpeedL > regimeSlowSpeed)
+                    {
+                        this.motorDriverL298.SetSpeed(MotorDriverL298.Motor.Motor1, regimeSlowSpeed);
+                        currentSpeedL = regimeSlowSpeed;
+                    }
 
+                    //fast left
+                    if (currentSpeedL < regimeHighSpeed)
+                    {
+                        this.motorDriverL298.SetSpeed(MotorDriverL298.Motor.Motor1, regimeHighSpeed);
+                        currentSpeedL = regimeHighSpeed;
+                    } */
                 }
                 else
                 {
-
+                    // Go straight
+                    lastAction = 0;
+                    currentSpeedR = regimeHighSpeed;
+                    currentSpeedL = regimeHighSpeed;
+                    this.motorDriverL298.SetSpeed(MotorDriverL298.Motor.Motor1, currentSpeedR);
+                    this.motorDriverL298.SetSpeed(MotorDriverL298.Motor.Motor2, currentSpeedL);
                 }
             }
         }
 
-        public void readSensors(bool RightForward, bool LeftForward, bool RightBackward, bool LeftBackward)
+        public void move()
+        {
+            moving = true;
+            multicolorLED2.TurnBlue();
+            currentSpeedR = regimeHighSpeed;
+            currentSpeedL = regimeHighSpeed;
+
+            this.motorDriverL298.SetSpeed(MotorDriverL298.Motor.Motor1, regimeHighSpeed);
+            this.motorDriverL298.SetSpeed(MotorDriverL298.Motor.Motor2, regimeHighSpeed);
+            moveTimer.Start();
+            //stopTimer.Start();            
+        }
+/*
+        public void readSensors(bool RightForward, bool LeftForward)
         {
             rfSensor = (RightForward && breakOut.rightForwardSensor.Read()) ? 1 : -1;
             lfSensor = (LeftForward && breakOut.leftForwardSensor.Read()) ? 1 : -1;
-            //rbSensor = (RightBackward && breakOut.rightBackwardSensor.Read()) ? 1 : -1;
-            //lbSensor = (LeftBackward && breakOut.leftBackwardSensor.Read()) ? 1 : -1;
+            Debug.Print("[MOTOR] Sensors RF:" + rfSensor + " LF:" + lfSensor);
         }
-
+*/
         public void moveForward()
         {
             stop = false;
             Debug.Print("[MOTOR] move forward");
-            Thread t_forward = new Thread(ForwardThread);
+            Thread t_forward = new Thread(move);
+            //Thread t_forward = new Thread(ForwardThread);
             t_forward.Start();
             //Debug.Print("[MOTOR] FR: " + breakOut.rightForwardSensor.Read() + " FL: " + breakOut.leftForwardSensor.Read() + " BR: " + breakOut.rightBackwardSensor.Read() + " BL: " + breakOut.leftBackwardSensor.Read());
+        }
+
+        public void moveStop()
+        {
+            stop = true;
+            this.motorDriverL298.SetSpeed(MotorDriverL298.Motor.Motor2, 0.1);
+            this.motorDriverL298.SetSpeed(MotorDriverL298.Motor.Motor1, 0.1);
         }
 
         // angle for rotation
@@ -159,11 +274,14 @@ namespace GadgeteerCamera
         public void ForwardThread()
         {
             multicolorLED2.TurnBlue();
-            float currentSpeedR = 0;
-            float currentSpeedL = 0;
+            float currentSpeedR = regimeHighSpeed;
+            float currentSpeedL = regimeHighSpeed;
             
             Thread t_fwdSensor = new Thread(ForwardSensorThread);
             t_fwdSensor.Start();
+
+            this.motorDriverL298.SetSpeed(MotorDriverL298.Motor.Motor1, regimeHighSpeed);
+            this.motorDriverL298.SetSpeed(MotorDriverL298.Motor.Motor2, regimeHighSpeed);
 
             while (!stop)
             {
@@ -197,8 +315,8 @@ namespace GadgeteerCamera
                     currentSpeedL = regimeHighSpeed;
                 }
             }
-            this.motorDriverL298.SetSpeed(MotorDriverL298.Motor.Motor2, 0.1);
-            this.motorDriverL298.SetSpeed(MotorDriverL298.Motor.Motor1, 0.1);
+            this.motorDriverL298.SetSpeed(MotorDriverL298.Motor.Motor2, regimeSlowSpeed);
+            this.motorDriverL298.SetSpeed(MotorDriverL298.Motor.Motor1, regimeSlowSpeed);
             Debug.Print("[MOTOR] exit forward");
             multicolorLED2.TurnGreen();
         }

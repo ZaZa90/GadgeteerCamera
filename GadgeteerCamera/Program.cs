@@ -1,10 +1,10 @@
 ﻿using System.Threading;
 using Microsoft.SPOT;
-
 using GT = Gadgeteer;
 using GTM = Gadgeteer.Modules;
 using Gadgeteer.Modules.GHIElectronics;
 using System;
+using System.Globalization;
 
 // public enum Operation { STOP, FORWARD, RIGHT, LEFT, PICTURE, NULL, ERROR, FORWARD2, BACKWARD2, RIGHT2, LEFT2 };
 
@@ -13,7 +13,7 @@ namespace GadgeteerCamera
 
     public partial class Program
     {
-
+        
         // threads
         Thread CheckStopThread;
         Thread CheckSensorThread;
@@ -45,7 +45,7 @@ namespace GadgeteerCamera
 
         void ProgramStarted()
         {
-
+            
             //event handlers
             button.ButtonPressed += new Button.ButtonEventHandler(button_ButtonPressed);
             button.ButtonReleased += new Button.ButtonEventHandler(button_ButtonReleased);
@@ -125,6 +125,7 @@ namespace GadgeteerCamera
         {
             while (client.isProcessing()) ;
             string conf = motor.getSlowSpeed().ToString("F2") + "," + motor.getHighSpeed().ToString("F2") + "," + motor.getLimitLines().ToString("F2") + "," + motor.getTurnDeviation().ToString("F2");
+            Debug.Print("[PROGRAM] Send Car's Config: "+ motor.getSlowSpeed().ToString("F2") + "," + motor.getHighSpeed().ToString("F2") + "," + motor.getLimitLines().ToString("F2") + "," + motor.getTurnDeviation().ToString("F2"));
             client.sendConfHTTP(conf);
         }
 
@@ -144,7 +145,8 @@ namespace GadgeteerCamera
             {
                 //takePicture();
             }
-            while (!currentOperation.Equals("STOP")) operationLoop();
+ 
+            operationLoop();
         }
 
         private void operationLoop()
@@ -158,83 +160,109 @@ namespace GadgeteerCamera
 
             multicolorLED2.TurnWhite();
             currentOperation = client.getOperation(); //read the operation received before
-            String angle = currentOperation.Substring(1);
+            while (currentOperation != "NULL")
+            {
+                String angle = currentOperation.Substring(1);
 
-            Debug.Print("[PROGRAM] Operation: " + currentOperation);
+                Debug.Print("[PROGRAM] Operation: " + currentOperation);
 
-            if (currentOperation.Equals("PICT"))
-            {
-                //since picture requires network can't read next op until this finish
-                isTakingPicture = true; //isTakingPicture set here to avoid race condition
-                t = new Thread(takePicture);
-                t.Start();
-                while (isTakingPicture) ;
-                currentOperation = "NULL";
-            }
+                if (currentOperation == "PICT")
+                {
+                    //since picture requires network can't read next op until this finish
+                    isTakingPicture = true; //isTakingPicture set here to avoid race condition
+                    t = new Thread(takePicture);
+                    t.Start();
+                    while (isTakingPicture) ;
+                    currentOperation = "NULL";
+                }
 
-            else if (currentOperation.Equals("STOP"))
-            {
-                t = new Thread(motor.moveStop);
-                t.Start();
-                currentOperation = "NULL";
-            }
+                else if (currentOperation == "STOP")
+                {
+                    t = new Thread(motor.moveStop);
+                    t.Start();
+                    currentOperation = "NULL";
+                }
 
-            else if (currentOperation[0].Equals("F"))
-            {
-                t = new Thread(motor.moveForward);
-                t.Start();
-                currentOperation = "NULL";
-            }
+                else if (currentOperation[0] == 'F')
+                {
+                    t = new Thread(motor.moveForward);
+                    t.Start();
+                    currentOperation = "NULL";
+                }
 
-            else if (currentOperation[0].Equals("R"))
-            {
-                motor.angle = int.Parse(angle);
-                t = new Thread(motor.moveRight);
-                t.Start();
-                currentOperation = "NULL";
-            }
-            else if (currentOperation[0].Equals("L"))
-            {
-                motor.angle = int.Parse(angle);
-                t = new Thread(motor.moveLeft);
-                t.Start();
-                currentOperation = "NULL";
-            }
+                else if (currentOperation[0] == 'R')
+                {
+                    motor.angle = int.Parse(angle);
+                    t = new Thread(motor.moveRight);
+                    t.Start();
+                    currentOperation = "NULL";
+                }
+                else if (currentOperation[0] == 'L')
+                {
+                    motor.angle = int.Parse(angle);
+                    t = new Thread(motor.moveLeft);
+                    t.Start();
+                    currentOperation = "NULL";
+                }
 
-            /*else if (currentOperation.Equals(Operation.FORWARD2))
-            {
-                t = new Thread(motor.moveForward2);
-                t.Start();
-                currentOperation = Operation.NULL;
-            }
+                /*else if (currentOperation.Equals(Operation.FORWARD2))
+                {
+                    t = new Thread(motor.moveForward2);
+                    t.Start();
+                    currentOperation = Operation.NULL;
+                }
 
-            else if (currentOperation.Equals(Operation.RIGHT2))
-            {
-                t = new Thread(motor.moveRight2);
-                t.Start();
-                currentOperation = Operation.NULL;
-            }
-            else if (currentOperation.Equals(Operation.LEFT2))
-            {
-                t = new Thread(motor.moveLeft2);
-                t.Start();
-                currentOperation = Operation.NULL;
-            }*/
+                else if (currentOperation.Equals(Operation.RIGHT2))
+                {
+                    t = new Thread(motor.moveRight2);
+                    t.Start();
+                    currentOperation = Operation.NULL;
+                }
+                else if (currentOperation.Equals(Operation.LEFT2))
+                {
+                    t = new Thread(motor.moveLeft2);
+                    t.Start();
+                    currentOperation = Operation.NULL;
+                }*/
 
-            else if (currentOperation[0].Equals("B"))
-            {
-                t = new Thread(motor.moveBackward2);
-                t.Start();
-                currentOperation = "NULL";
-            }
+                else if (currentOperation[0] == 'B')
+                {
+                    t = new Thread(motor.moveBackward2);
+                    t.Start();
+                    currentOperation = "NULL";
+                }
+                else if (currentOperation[0] == 'C')
+                {
+                    t = new Thread(configure);
+                    t.Start();
+                    currentOperation = "NULL";
+                }
 
                 while (motor.isMoving()) ;
+
                 multicolorLED2.TurnBlue();
                 client.RecvOperation();
                 Debug.Print("[PROGRAM] waiting server response");
                 while (client.isProcessing()) ; //wait the client receive the operation type from server to continue
+
+                multicolorLED2.TurnWhite();
+                currentOperation = client.getOperation(); //read the operation received before
             }
-            multicolorLED2.TurnGreen();
+                multicolorLED2.TurnGreen();
+        }
+
+        private void configure()
+        {
+            String[] conf = currentOperation.Substring(1).Split('/');
+            Debug.Print("[PROGRAM] SET SlowSpeed to "+ (float)Double.Parse(conf[0]));
+            motor.setSlowSpeed((float)Double.Parse(conf[0]));
+            Debug.Print("[PROGRAM] SET HighSpeed to " + (float)Double.Parse(conf[1]));
+            motor.setHighSpeed((float)Double.Parse(conf[1]));
+            Debug.Print("[PROGRAM] SET LimitLines to " + conf[2]);
+            motor.setLimitLines((int)Double.Parse(conf[2]));
+            Debug.Print("[PROGRAM] SET TurnDeviation to " + (float)Double.Parse(conf[3]));
+            motor.setTurnDeviation((float)Double.Parse(conf[3]));
+
         }
 
         private void takePicture()
