@@ -15,11 +15,8 @@ namespace GadgeteerCamera
     {
         
         // threads
-        Thread CheckStopThread;
-        Thread CheckSensorThread;
-
-        //timers
-        GT.Timer timer;
+        //Thread CheckStopThread;
+        //Thread CheckSensorThread;
 
         //client
         static Client client;
@@ -29,6 +26,7 @@ namespace GadgeteerCamera
 
         //picture
         Picture picture;
+        int picNumber;
 
         //breakout
         BreakOut breakOut;
@@ -46,7 +44,7 @@ namespace GadgeteerCamera
         void ProgramStarted()
         {
             
-            //event handlers
+            // Gadgeteer event handlers
             button.ButtonPressed += new Button.ButtonEventHandler(button_ButtonPressed);
             button.ButtonReleased += new Button.ButtonEventHandler(button_ButtonReleased);
             camera.PictureCaptured += new Camera.PictureCapturedEventHandler(camera_PictureCaptured);
@@ -55,7 +53,11 @@ namespace GadgeteerCamera
 
             //client
             client = new Client(multicolorLED2);
-//            client.ConnectionEnd += c_ConnectionEnd;
+
+            //client event handlers
+            client.OnConnectionEnd += c_ConnectionEnd;
+            client.OnOperationReceived += c_OperationReceived;
+            client.OnPictureAnalyzed += c_PictureAnalyzed;
 
             //network 
             network = new Network();
@@ -73,12 +75,9 @@ namespace GadgeteerCamera
             multicolorLED.TurnRed(); //network off
             multicolorLED2.TurnRed(); //no operation executed
 
-            //timers
-            timer = new GT.Timer(10);
-            //timer.Tick += operation_timer;
-
             //pictures
             picture = new Picture(multicolorLED2);
+            picNumber = 0;
 
             //breakout
             breakOut = new BreakOut();
@@ -86,25 +85,85 @@ namespace GadgeteerCamera
             //motor
             motor = new Motor(motorDriverL298, breakOut, multicolorLED2);
 
+            //motor events
+            motor.OnStop += m_Stop;
+
             //flags
             isChecking = false;
             isTakingPicture = false;
         }
 
-        private void operation_timer(GT.Timer timer)
+
+        void c_ConnectionEnd(object sender)
         {
+            // Car's IP Received Correctely
+            threadSendConfig();
+            //            string conf = motor.getSlowSpeed().ToString() + "," + motor.getHighSpeed().ToString() + "," + motor.getLimitLines().ToString() + "," + motor.getTurnDeviation().ToString();
+            //            client.sendConfHTTP(conf);
         }
 
-//        static void c_ConnectionEnd(object sender, EventArgs e)
-//        {
-//            string conf = motor.getSlowSpeed().ToString() + "," + motor.getHighSpeed().ToString() + "," + motor.getLimitLines().ToString() + "," + motor.getTurnDeviation().ToString();
-//            client.sendConfHTTP(conf);
-//        }
+        void c_OperationReceived(object sender)
+        {
+            //operation correctly received
+            operationReceived();
+        }
+
+        void c_PictureAnalyzed(object sender)
+        {
+            // Picture analyzed by the server
+            if (client.isRecognized())
+            {
+                Debug.Print("[CAMERA] picture recognized");
+                multicolorLED2.TurnGreen();
+                currentOperation = "NULL";
+                picNumber = 0;
+                // I can call getOperation() and go on
+                getOperation();
+            }
+            else if (picNumber < 6) takePicture();
+            else 
+            {
+                Debug.Print("[CAMERA] picture NOT recognized");
+                multicolorLED2.TurnRed();
+                currentOperation = "NULL";
+                picNumber = 0;
+                // TODO Not sure i have to call getOperation on FAIL
+                //getOperation();
+            }
+
+//            if (!client.isRecognized())
+//                {
+//                    while (!camera.CameraReady) ;
+//                    camera.TakePicture();
+//                   client.setProcessing(true);
+//                }
+//                else
+//                {
+//                    Debug.Print("[CAMERA] picture recognized");
+//                    multicolorLED2.TurnGreen();
+//                    isTakingPicture = false;
+//                    currentOperation = "NULL";
+//                    return;
+//                }
+//            }
+//            Debug.Print("[CAMERA] picture NOT recognized");
+//            multicolorLED2.TurnRed();
+//            isTakingPicture = false;
+//            currentOperation = "NULL";
+        }
+
+        void m_Stop(object sender)
+        {
+            getOperation();
+        }
 
         private void wifi_NetworkDown(GTM.Module.NetworkModule sender, GTM.Module.NetworkModule.NetworkState state)
         {
             Debug.Print("[PROGRAM] network down");
             multicolorLED.TurnRed();
+            multicolorLED2.TurnRed();
+            network.resetIp();
+            network.connectWiFiLoop();
         }
 
         private void wifi_NetworkUp(GTM.Module.NetworkModule sender, GTM.Module.NetworkModule.NetworkState state)
@@ -116,14 +175,15 @@ namespace GadgeteerCamera
                 multicolorLED.TurnGreen();
                 client.SendIpHTTP(network.getIp());
                 
-                Thread t_op = new Thread(threadSendConfig);
-                t_op.Start();
+                //Thread t_op = new Thread(threadSendConfig);
+                //t_op.Start();
             }
         }
 
         private void threadSendConfig()
         {
-            while (client.isProcessing()) ;
+            //TODO
+            //while (client.isProcessing()) ;
             string conf = motor.getSlowSpeed().ToString("F2") + "," + motor.getHighSpeed().ToString("F2") + "," + motor.getLimitLines().ToString("F2") + "," + motor.getTurnDeviation().ToString("F2");
             Debug.Print("[PROGRAM] Send Car's Config: "+ motor.getSlowSpeed().ToString("F2") + "," + motor.getHighSpeed().ToString("F2") + "," + motor.getLimitLines().ToString("F2") + "," + motor.getTurnDeviation().ToString("F2"));
             client.sendConfHTTP(conf);
@@ -135,32 +195,28 @@ namespace GadgeteerCamera
 
         private void button_ButtonPressed(Button sender, Button.ButtonState state)
         {
-            Thread t_op = new Thread(takePicAndGo);
-            t_op.Start();
+            //Thread t_op = new Thread(takePicAndGo);
+            //t_op.Start();
+            if (!isTakingPicture) takePicture();
         }
 
-        private void takePicAndGo()
-        {
-            if (!isTakingPicture)
-            {
-                //takePicture();
-            }
- 
-            operationLoop();
-        }
 
-        private void operationLoop()
+        private void getOperation()
         {
-            Thread t;
             //Thread t_cl;
             multicolorLED2.TurnBlue();
             client.RecvOperation();
             Debug.Print("[PROGRAM] waiting server response");
-            while (client.isProcessing()) ; //wait the client receive the operation type from server to continue
+            //TODO
+            //while (client.isProcessing()) ; //wait the client receive the operation type from server to continue
+        }
 
+        private void operationReceived()
+        {
+            //Thread t;
             multicolorLED2.TurnWhite();
             currentOperation = client.getOperation(); //read the operation received before
-            while (currentOperation != "NULL")
+            if (currentOperation != "NULL")
             {
                 String angle = currentOperation.Substring(1);
 
@@ -169,39 +225,45 @@ namespace GadgeteerCamera
                 if (currentOperation == "PICT")
                 {
                     //since picture requires network can't read next op until this finish
+
                     isTakingPicture = true; //isTakingPicture set here to avoid race condition
-                    t = new Thread(takePicture);
-                    t.Start();
-                    while (isTakingPicture) ;
-                    currentOperation = "NULL";
+                    //t = new Thread(takePicture);
+                    //t.Start();
+                    takePicture();
+                    //TODO
+                    //while (isTakingPicture) ;
                 }
 
                 else if (currentOperation == "STOP")
                 {
-                    t = new Thread(motor.moveStop);
-                    t.Start();
+                    //t = new Thread(motor.moveStop);
+                    //t.Start();
+                    motor.moveStop();
                     currentOperation = "NULL";
                 }
 
                 else if (currentOperation[0] == 'F')
                 {
-                    t = new Thread(motor.moveForward);
-                    t.Start();
+                    //Thread t = new Thread(motor.move);
+                    //t.Start();
+                    motor.move();
                     currentOperation = "NULL";
                 }
 
                 else if (currentOperation[0] == 'R')
                 {
                     motor.angle = int.Parse(angle);
-                    t = new Thread(motor.moveRight);
-                    t.Start();
+                    //t = new Thread(motor.moveRight);
+                    //t.Start();
+                    motor.moveRight();
                     currentOperation = "NULL";
                 }
                 else if (currentOperation[0] == 'L')
                 {
                     motor.angle = int.Parse(angle);
-                    t = new Thread(motor.moveLeft);
-                    t.Start();
+                    //t = new Thread(motor.moveLeft);
+                    //t.Start();
+                    motor.moveLeft();
                     currentOperation = "NULL";
                 }
 
@@ -227,28 +289,29 @@ namespace GadgeteerCamera
 
                 else if (currentOperation[0] == 'B')
                 {
-                    t = new Thread(motor.moveBackward2);
-                    t.Start();
+                    //t = new Thread(motor.moveBackward2);
+                    //t.Start();
+                    motor.moveBackward();
                     currentOperation = "NULL";
                 }
                 else if (currentOperation[0] == 'C')
                 {
-                    t = new Thread(configure);
-                    t.Start();
+                    //t = new Thread(configure);
+                    //t.Start();
+                    configure();
                     currentOperation = "NULL";
                 }
 
-                while (motor.isMoving()) ;
+                //TODO
+                //while (motor.isMoving()) ;
+                //getOperation();
+                //TODO
+                //while (client.isProcessing()) ; //wait the client receive the operation type from server to continue
 
-                multicolorLED2.TurnBlue();
-                client.RecvOperation();
-                Debug.Print("[PROGRAM] waiting server response");
-                while (client.isProcessing()) ; //wait the client receive the operation type from server to continue
-
-                multicolorLED2.TurnWhite();
-                currentOperation = client.getOperation(); //read the operation received before
+                //multicolorLED2.TurnWhite();
+                //currentOperation = client.getOperation(); //read the operation received before
             }
-                multicolorLED2.TurnGreen();
+            multicolorLED2.TurnGreen();
         }
 
         private void configure()
@@ -282,37 +345,41 @@ namespace GadgeteerCamera
 
             //wait camera is ready
             while (!camera.CameraReady) ;
-
+            picNumber++;
             Debug.Print("[CAMERA] Try taking photo");
+            multicolorLED2.TurnBlue();
             //1st attempt
             camera.TakePicture(); //this cause the picture handler activation
 
-            client.setProcessing(true); //set client busy here avoid race condition
+//            client.setProcessing(true); //set client busy here avoid race condition
 
             //other 4 attempt
-            for (int recgn = 0; recgn < 4; recgn++)
-            {
-                multicolorLED2.TurnBlue();
-                while (client.isProcessing()) ;
-                Debug.Print("[CAMERA] Retry: " + (recgn + 1) + "/5");
+//            for (int recgn = 0; recgn < 4; recgn++)
+//            {
+//                multicolorLED2.TurnBlue();
+                //TODO
+//                while (client.isProcessing()) ;
+//                Debug.Print("[CAMERA] Retry: " + (recgn + 1) + "/5");
 
-                if (!client.isRecognized())
-                {
-                    while (!camera.CameraReady) ;
-                    camera.TakePicture();
-                    client.setProcessing(true);
-                }
-                else
-                {
-                    Debug.Print("[CAMERA] picture recognized");
-                    multicolorLED2.TurnGreen();
-                    isTakingPicture = false;
-                    return;
-                }
-            }
-            Debug.Print("[CAMERA] picture NOT recognized");
-            multicolorLED2.TurnRed();
-            isTakingPicture = false;
+//                if (!client.isRecognized())
+//                {
+//                    while (!camera.CameraReady) ;
+//                    camera.TakePicture();
+//                   client.setProcessing(true);
+//                }
+//                else
+//                {
+//                    Debug.Print("[CAMERA] picture recognized");
+//                    multicolorLED2.TurnGreen();
+//                    isTakingPicture = false;
+//                    currentOperation = "NULL";
+//                    return;
+//                }
+//            }
+//            Debug.Print("[CAMERA] picture NOT recognized");
+//            multicolorLED2.TurnRed();
+//            isTakingPicture = false;
+//            currentOperation = "NULL";
         }
 
 

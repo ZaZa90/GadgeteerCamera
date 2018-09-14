@@ -27,22 +27,15 @@ namespace GadgeteerCamera
         public void setProcessing(Boolean b) { processing = b; }
         public String getOperation() { return currentOperation; }
 
+        public delegate void EventHandler(object sender);
+        public event EventHandler OnConnectionEnd;
+        public event EventHandler OnOperationReceived;
+        public event EventHandler OnPictureAnalyzed;
 
         public Client(Gadgeteer.Modules.GHIElectronics.MulticolorLED multicolorLED2)
         {
             this.multicolorLED2 = multicolorLED2;
         }
-
-//        protected virtual void OnConnectionEnd(EventArgs e)
-//        {
-//            EventHandler handler = ConnectionEnd;
-//            if (handler != null)
-//            {
-//                handler(this, e);
-//            }
-//        }
-
-//        public event EventHandler ConnectionEnd;
 
         public void sendConfHTTP(string conf)
         {
@@ -109,6 +102,7 @@ namespace GadgeteerCamera
 
             }
             setProcessing(false);
+            OnOperationReceived(this);
         }
 
 
@@ -127,15 +121,24 @@ namespace GadgeteerCamera
         private void req_ResponseReceived(HttpRequest sender, HttpResponse response)
         {
             Debug.Print("[SERVER] " + response.StatusCode + "," + response.Text);
-            if (response.StatusCode == "200") multicolorLED2.TurnGreen();
+            if (response.StatusCode == "200")
+            {
+                multicolorLED2.TurnGreen();
+                OnConnectionEnd(this);
+            }
+            else multicolorLED2.TurnRed();
             setProcessing(false);
-//            OnConnectionEnd(EventArgs.Empty);
         }
 
         private void req_ConfResponseReceived(HttpRequest sender, HttpResponse response)
         {
             Debug.Print("[SERVER] " + response.StatusCode + "," + response.Text);
-            if (response.StatusCode == "200") multicolorLED2.TurnGreen();
+            if (response.StatusCode == "200")
+            {
+                multicolorLED2.TurnGreen();
+                //launch operation loop?
+            }
+            else multicolorLED2.TurnRed();
             setProcessing(false);
         }
 
@@ -206,8 +209,10 @@ namespace GadgeteerCamera
             }
             else
             {
+                Debug.Print("[SERVER] Bad Http Response");
                 multicolorLED2.TurnRed();
             }
+            OnPictureAnalyzed(this);
             setProcessing(false);
         }
 

@@ -40,6 +40,7 @@
   <Import Project="$(NetMfTargetsBaseDir)$(TargetFrameworkVersion)\CSharp.Targets" />
   <ItemGroup>
     <Compile Include="BreakOut.cs" />
+    <Compile Include="DebuggerBrowsableState.cs" />
     <Compile Include="Client.cs" />
     <Compile Include="Motor.cs" />
     <Compile Include="Picture.cs" />

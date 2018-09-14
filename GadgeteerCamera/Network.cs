@@ -12,17 +12,14 @@ namespace GadgeteerCamera
         Gadgeteer.Modules.GHIElectronics.WiFiRS21 wifiRS21;
 
         //Network info
-        private static string SSID = "Telecom-56888096";
-        private static string PASSWORD = "Y9jc8D9FqXIhpnAj1mSs3uuz";
+        private static string SSID = "Robocar_WiFi";
+        private static string PASSWORD = "robocar2018";
         private static string ip = "0.0.0.0";
         private static string dns = "0.0.0.0";
-        private static string dns2 = "0.0.0.0";
+        //private static string dns2 = "0.0.0.0";
 
-        public void initWIFI(Gadgeteer.Modules.GHIElectronics.WiFiRS21 wifiRS21)
+        public void connectWiFiLoop()
         {
-
-            this.wifiRS21 = wifiRS21;
-
             if (wifiRS21.NetworkInterface.Opened)
                 wifiRS21.NetworkInterface.Close();
             if (!wifiRS21.NetworkInterface.Opened)
@@ -33,7 +30,21 @@ namespace GadgeteerCamera
                 wifiRS21.NetworkInterface.EnableDynamicDns();
 
             Debug.Print("[NETWORK] Connecting to: " + SSID);
-            wifiRS21.NetworkInterface.Join(SSID, PASSWORD);
+            while (!wifiRS21.IsNetworkConnected)
+            {
+                try
+                {
+                    wifiRS21.NetworkInterface.Join(SSID, PASSWORD);
+                }
+                catch(Exception e) { Debug.Print(e.Message); }
+            }
+        }
+
+        public void initWIFI(Gadgeteer.Modules.GHIElectronics.WiFiRS21 wifiRS21)
+        {
+
+            this.wifiRS21 = wifiRS21;
+            
         }
 
         public void ConnectWIFI(){
@@ -49,6 +60,7 @@ namespace GadgeteerCamera
             }
             if (esc < 50)
             {
+
                 ip = wifiRS21.NetworkInterface.IPAddress;
                 dns = wifiRS21.NetworkInterface.DnsAddresses[0];
                 //dns2 = wifiRS21.NetworkInterface.DnsAddresses[1];
@@ -61,7 +73,15 @@ namespace GadgeteerCamera
             else
             {
                 Debug.Print("[NETWORK] Connection failed");
+                Thread.Sleep(5000);
+                ConnectWIFI();
             }
+        }
+
+        public void resetIp()
+        {
+            ip = "0.0.0.0";
+            dns = "0.0.0.0";
         }
 
         public string getIp()
