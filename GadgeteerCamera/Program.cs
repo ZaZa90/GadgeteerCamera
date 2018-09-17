@@ -87,6 +87,7 @@ namespace GadgeteerCamera
 
             //motor events
             motor.OnStop += m_Stop;
+            motor.OnTimeEnd += m_TakePic;
 
             //flags
             isChecking = false;
@@ -120,8 +121,15 @@ namespace GadgeteerCamera
                 // I can call getOperation() and go on
                 getOperation();
             }
-            else if (picNumber < 6) takePicture();
-            else 
+            else if (picNumber == 1) m_TakePic(this);
+            else if (picNumber < 4)
+            {
+                int n = -1;
+                int exp = 1;
+                for (int i = 0; i < picNumber; i++) exp *= n;
+                motor.MoveSpeedTiming(exp*motor.getHighSpeed(), exp*motor.getHighSpeed(), 0, (int)50*(picNumber-1), 1);
+            }
+            else
             {
                 Debug.Print("[CAMERA] picture NOT recognized");
                 multicolorLED2.TurnRed();
@@ -155,6 +163,21 @@ namespace GadgeteerCamera
         void m_Stop(object sender)
         {
             getOperation();
+        }
+
+        void m_TakePic(object sender)
+        {
+            //Thread.Sleep(200);
+            TimeSpan difference;
+            DateTime timeNow;
+            DateTime timeStart = DateTime.Now;
+            do
+            {
+                timeNow = DateTime.Now;
+                difference = (timeNow - timeStart);
+            }
+            while (difference.Seconds < 1);
+            takePicture();
         }
 
         private void wifi_NetworkDown(GTM.Module.NetworkModule sender, GTM.Module.NetworkModule.NetworkState state)
@@ -311,6 +334,7 @@ namespace GadgeteerCamera
                 //multicolorLED2.TurnWhite();
                 //currentOperation = client.getOperation(); //read the operation received before
             }
+            else getOperation();
             multicolorLED2.TurnGreen();
         }
 

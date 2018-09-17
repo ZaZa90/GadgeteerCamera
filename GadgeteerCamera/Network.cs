@@ -54,7 +54,16 @@ namespace GadgeteerCamera
             int esc = 0;
             while (wifiRS21.NetworkInterface.IPAddress == "0.0.0.0")
             {
-                Thread.Sleep(200);
+                //Thread.Sleep(200);
+                TimeSpan difference;
+                DateTime timeNow;
+                DateTime timeStart = DateTime.Now;
+                do
+                {
+                    timeNow = DateTime.Now;
+                    difference = (timeNow - timeStart);
+                }
+                while (difference.Milliseconds >= 200);
                 if (++esc > 50)
                     break;
             }
