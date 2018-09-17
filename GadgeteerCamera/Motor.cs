@@ -102,6 +102,7 @@ namespace GadgeteerCamera
                         //Debug.Print("THIRD");
                         if(lastAction != 0)
                         {
+                            Debug.Print("Set Straight");
                             lastAction = 0;
                             this.motorDriverL298.SetSpeed(MotorDriverL298.Motor.Motor2, regimeHighSpeed);
                             this.motorDriverL298.SetSpeed(MotorDriverL298.Motor.Motor1, regimeHighSpeed);

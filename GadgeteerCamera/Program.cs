@@ -361,6 +361,7 @@ namespace GadgeteerCamera
                 Debug.Print("[PROGRAM] SET TurnDeviation to " + (float)Double.Parse(conf[3]));
                 motor.setTurnDeviation((float)Double.Parse(conf[3]));
             }
+            getOperation();
         }
 
         private void takePicture()
