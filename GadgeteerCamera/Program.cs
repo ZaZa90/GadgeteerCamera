@@ -105,8 +105,10 @@ namespace GadgeteerCamera
 
         void c_OperationReceived(object sender)
         {
-            //operation correctly received
-            operationReceived();
+            // operation correctly received
+            // first take pic
+            if (client.getOperation() != "NULL") takePicture();
+            else operationReceived();
         }
 
         void c_PictureAnalyzed(object sender)
@@ -119,7 +121,7 @@ namespace GadgeteerCamera
                 currentOperation = "NULL";
                 picNumber = 0;
                 // I can call getOperation() and go on
-                getOperation();
+                operationReceived();
             }
             else if (picNumber == 1) m_TakePic(this);
             else if (picNumber < 4)
@@ -136,7 +138,7 @@ namespace GadgeteerCamera
                 currentOperation = "NULL";
                 picNumber = 0;
                 // TODO Not sure i have to call getOperation on FAIL
-                //getOperation();
+                operationReceived();
             }
 
 //            if (!client.isRecognized())
@@ -232,16 +234,18 @@ namespace GadgeteerCamera
             Debug.Print("[PROGRAM] waiting server response");
             //TODO
             //while (client.isProcessing()) ; //wait the client receive the operation type from server to continue
+            //At this point the event c_operationReceived is triggered
         }
 
         private void operationReceived()
         {
             //Thread t;
+
             multicolorLED2.TurnWhite();
             currentOperation = client.getOperation(); //read the operation received before
             if (currentOperation != "NULL")
             {
-                String angle = currentOperation.Substring(1);
+                int angle = int.Parse(currentOperation.Substring(1));
 
                 Debug.Print("[PROGRAM] Operation: " + currentOperation);
 
@@ -269,24 +273,26 @@ namespace GadgeteerCamera
                 {
                     //Thread t = new Thread(motor.move);
                     //t.Start();
-                    motor.move();
+                    if (angle > 180) motor.moveLeft(angle);
+                    else if (angle > 0) motor.moveRight(angle);
+                    else motor.move();
                     currentOperation = "NULL";
                 }
 
                 else if (currentOperation[0] == 'R')
                 {
-                    motor.angle = int.Parse(angle);
+                    //motor.angle = int.Parse(angle);
                     //t = new Thread(motor.moveRight);
                     //t.Start();
-                    motor.moveRight();
+                    motor.moveRight(angle);
                     currentOperation = "NULL";
                 }
                 else if (currentOperation[0] == 'L')
                 {
-                    motor.angle = int.Parse(angle);
+                    //motor.angle = int.Parse(angle);
                     //t = new Thread(motor.moveLeft);
                     //t.Start();
-                    motor.moveLeft();
+                    motor.moveLeft(angle);
                     currentOperation = "NULL";
                 }
 
@@ -330,7 +336,6 @@ namespace GadgeteerCamera
                 //getOperation();
                 //TODO
                 //while (client.isProcessing()) ; //wait the client receive the operation type from server to continue
-
                 //multicolorLED2.TurnWhite();
                 //currentOperation = client.getOperation(); //read the operation received before
             }
@@ -416,7 +421,5 @@ namespace GadgeteerCamera
             client.sendPictureTCP(bmpBuffer);
         }
 
-
-        //timer check path
     }
 }
