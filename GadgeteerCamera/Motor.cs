@@ -125,6 +125,7 @@ namespace GadgeteerCamera
                             this.motorDriverL298.SetSpeed(MotorDriverL298.Motor.Motor1, regimeSlowSpeed);
                             multicolorLED2.TurnGreen();
                             counter = 0;
+                            lastAction = -100;
                             //WE ARE ON QR
                             onCheckpoint = false;
                             // TODO use stop timer instead to have decelerated stop

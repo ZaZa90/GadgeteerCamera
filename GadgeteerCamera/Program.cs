@@ -107,8 +107,9 @@ namespace GadgeteerCamera
         {
             // operation correctly received
             // first take pic
-            if (client.getOperation() != "NULL") takePicture();
-            else operationReceived();
+            //if (client.getOperation() != "NULL") takePicture();
+            //else
+             operationReceived();
         }
 
         void c_PictureAnalyzed(object sender)
@@ -121,7 +122,7 @@ namespace GadgeteerCamera
                 currentOperation = "NULL";
                 picNumber = 0;
                 // I can call getOperation() and go on
-                operationReceived();
+                getOperation();
             }
             else if (picNumber == 1) m_TakePic(this);
             else if (picNumber < 4)
@@ -138,7 +139,7 @@ namespace GadgeteerCamera
                 currentOperation = "NULL";
                 picNumber = 0;
                 // TODO Not sure i have to call getOperation on FAIL
-                operationReceived();
+                getOperation();
             }
 
 //            if (!client.isRecognized())
@@ -164,7 +165,7 @@ namespace GadgeteerCamera
 
         void m_Stop(object sender)
         {
-            getOperation();
+            takePicture();
         }
 
         void m_TakePic(object sender)
@@ -243,6 +244,7 @@ namespace GadgeteerCamera
 
             multicolorLED2.TurnWhite();
             currentOperation = client.getOperation(); //read the operation received before
+            Debug.Print("Current Operation: " + currentOperation);
             if (currentOperation != "NULL")
             {
                 int angle = int.Parse(currentOperation.Substring(1));
