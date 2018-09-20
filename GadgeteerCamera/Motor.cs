@@ -11,7 +11,7 @@ namespace GadgeteerCamera
 
         private Gadgeteer.Modules.GHIElectronics.MotorDriverL298 motorDriverL298;
         //private Gadgeteer.Timer motorTimer = new Gadgeteer.Timer(500); //useful for MoveSpeedTiming()
-        private Gadgeteer.Timer moveTimer = new Gadgeteer.Timer(35);
+        //private Gadgeteer.Timer moveTimer = new Gadgeteer.Timer(35);
        // private Gadgeteer.Timer stopTimer = new Gadgeteer.Timer(200);
         private float currentSpeedR, currentSpeedL;
         private int lastAction; // -1:Left 0:Straight 1:Right
@@ -67,7 +67,7 @@ namespace GadgeteerCamera
             this.lastAction = -100;
             this.counter = 0;
             this.onCheckpoint = false;
-            this.moveTimer.Tick += new Gadgeteer.Timer.TickEventHandler(moveTimer_Tick);
+            //this.moveTimer.Tick += new Gadgeteer.Timer.TickEventHandler(moveTimer_Tick);
             //this.stopTimer.Tick += new Gadgeteer.Timer.TickEventHandler(stopTimer_Tick);
         }
 
@@ -80,7 +80,7 @@ namespace GadgeteerCamera
             this.lastAction = -100;
             this.counter = 0;
             this.onCheckpoint = false;
-            this.moveTimer.Tick += new Gadgeteer.Timer.TickEventHandler(moveTimer_Tick);
+            //this.moveTimer.Tick += new Gadgeteer.Timer.TickEventHandler(moveTimer_Tick);
             //this.stopTimer.Tick += new Gadgeteer.Timer.TickEventHandler(stopTimer_Tick);
         }
 /*        void stopTimer_Tick(Gadgeteer.Timer timer)
@@ -129,7 +129,7 @@ namespace GadgeteerCamera
                         if (counter == limitLine)
                         {
                             //Debug.Print("FIFTH");
-                            moveTimer.Stop();
+                            //moveTimer.Stop();
                             Debug.Print("[MOTOR] STOP");
                             moving = false;
                             this.motorDriverL298.SetSpeed(MotorDriverL298.Motor.Motor2, regimeSlowSpeed);
@@ -246,83 +246,96 @@ namespace GadgeteerCamera
 
             //this.motorDriverL298.SetSpeed(MotorDriverL298.Motor.Motor1, regimeHighSpeed);
             //this.motorDriverL298.SetSpeed(MotorDriverL298.Motor.Motor2, regimeHighSpeed);
-            moveTimer.Start();
-            //while(isMoving()) moveForward();
+            //moveTimer.Start();
+            while(isMoving()) moveForward();
             //stopTimer.Start();            
         }
-/*
-        public void readSensors(bool RightForward, bool LeftForward)
-        {
-            rfSensor = (RightForward && breakOut.rightForwardSensor.Read()) ? 1 : -1;
-            lfSensor = (LeftForward && breakOut.leftForwardSensor.Read()) ? 1 : -1;
-            Debug.Print("[MOTOR] Sensors RF:" + rfSensor + " LF:" + lfSensor);
-        }
 
-        public void moveForward()
-        {
-            //readSensors(true, true);
-            if (isMoving())
+            public void moveForward()
             {
-                if (breakOut.rightForwardSensor.Read())
+                //readSensors(true, true);
+                //Debug.Print("ZERO");
+                if (isMoving())
                 {
-                    if (breakOut.leftForwardSensor.Read())
+                    //Debug.Print("FIRST");
+                    if (breakOut.rightForwardSensor.Read())
                     {
-                        if (!onCheckpoint)
+                        //Debug.Print("SECOND");
+                        if (breakOut.leftForwardSensor.Read())
                         {
-                            counter++;
-                            onCheckpoint = true;
+                            //Debug.Print("THIRD");
+                            if(lastAction != 0)
+                            {
+                                Debug.Print("Set Straight");
+                                lastAction = 0;
+                                this.motorDriverL298.SetSpeed(MotorDriverL298.Motor.Motor2, regimeHighSpeedLeft);
+                                this.motorDriverL298.SetSpeed(MotorDriverL298.Motor.Motor1, regimeHighSpeedRight);
+                            }
+                            if (!onCheckpoint)
+                            {
+                                //Debug.Print("FOURTH");
+                                counter++;
+                                Debug.Print("[MOTOR] Line Detected!");
+                                onCheckpoint = true;
+                            }
+                            if (counter == limitLine)
+                            {
+                                //Debug.Print("FIFTH");
+                                //moveTimer.Stop();
+                                Debug.Print("[MOTOR] STOP");
+                                moving = false;
+                                this.motorDriverL298.SetSpeed(MotorDriverL298.Motor.Motor2, regimeSlowSpeed);
+                                this.motorDriverL298.SetSpeed(MotorDriverL298.Motor.Motor1, regimeSlowSpeed);
+                                multicolorLED2.TurnGreen();
+                                counter = 0;
+                                lastAction = -100;
+                                //WE ARE ON QR
+                                onCheckpoint = false;
+                                // TODO use stop timer instead to have decelerated stop
+                                MoveSpeedTiming(regimeHighSpeedRight, regimeHighSpeedLeft, 0, 200);
+                            }
                         }
-                        if (counter == limitLine)
+                        else
                         {
-                            moveTimer.Stop();
-                            Debug.Print("[MOTOR] STOP");
-                            moving = false;
-                            this.motorDriverL298.SetSpeed(MotorDriverL298.Motor.Motor2, regimeSlowSpeed);
-                            this.motorDriverL298.SetSpeed(MotorDriverL298.Motor.Motor1, regimeSlowSpeed);
-                            multicolorLED2.TurnGreen();
-                            counter = 0;
-                            //WE ARE ON QR
-                            onCheckpoint = false;
-                            // TODO use stop timer instead to have decelerated stop
-                            OnStop(this);
-                        }
-                    }
-                    else
-                    {
-                        //                        if (lastAction == -1)
-                        //                        {
-                        //                            //Changed Direction
-                        //                            Debug.Print("[MOTOR] Change! Previous Action:"+lastAction);
-                        //                            currentSpeedR = regimeHighSpeed;
-                        //                            currentSpeedL = regimeHighSpeed;
-                        //                        }
-                        //                        currentSpeedR -= (currentSpeedR - regimeSlowSpeed) * turnDeviation;
-                        currentSpeedR = regimeSlowSpeed;
-                        //                        currentSpeedL += (1 - currentSpeedL) * turnDeviation;
-                        currentSpeedL = regimeHighSpeed;
-                        Debug.Print("[MOTOR] Turn Right - R:" + currentSpeedR + " L:" + currentSpeedL);
-                        this.motorDriverL298.SetSpeed(MotorDriverL298.Motor.Motor1, currentSpeedR);
-                        this.motorDriverL298.SetSpeed(MotorDriverL298.Motor.Motor2, currentSpeedL);
-                        lastAction = 1;
-                        onCheckpoint = false;
-                        /* 
-                         //slow right
-                         if (currentSpeedR > regimeSlowSpeed)
-                         {
-                             this.motorDriverL298.SetSpeed(MotorDriverL298.Motor.Motor2, regimeSlowSpeed);
-                             currentSpeedR = regimeSlowSpeed;
-                         }
+                            //Debug.Print("SIXTH");
+                            //                        if (lastAction == -1)
+                            //                        {
+                            //                            //Changed Direction
+                            //                            Debug.Print("[MOTOR] Change! Previous Action:"+lastAction);
+                            //                            currentSpeedR = regimeHighSpeed;
+                            //                            currentSpeedL = regimeHighSpeed;
+                            //                        }
+                            //                        currentSpeedR -= (currentSpeedR - regimeSlowSpeed) * turnDeviation;
+                            //                        currentSpeedL += (1 - currentSpeedL) * turnDeviation;
+                            if(lastAction != 1)
+                            {
+                                lastAction = 1;
+                                currentSpeedR = regimeSlowSpeed;
+                                currentSpeedL = regimeHighSpeedLeft;
+                                this.motorDriverL298.SetSpeed(MotorDriverL298.Motor.Motor1, currentSpeedR);
+                                this.motorDriverL298.SetSpeed(MotorDriverL298.Motor.Motor2, currentSpeedL);
+                                onCheckpoint = false;
+                            }
+                            Debug.Print("[MOTOR] Turn Right - R:" + currentSpeedR + " L:" + currentSpeedL);
+                            /* 
+                                //slow right
+                                if (currentSpeedR > regimeSlowSpeed)
+                                {
+                                    this.motorDriverL298.SetSpeed(MotorDriverL298.Motor.Motor2, regimeSlowSpeed);
+                                    currentSpeedR = regimeSlowSpeed;
+                                }
 
-                         //fast right
-                         else
-                         {
-                             this.motorDriverL298.SetSpeed(MotorDriverL298.Motor.Motor2, regimeHighSpeed);
-                             currentSpeedR = regimeHighSpeed;
-                         } 
-                    }
+                                //fast right
+                                else
+                                {
+                                    this.motorDriverL298.SetSpeed(MotorDriverL298.Motor.Motor2, regimeHighSpeed);
+                                    currentSpeedR = regimeHighSpeed;
+                                } */
+                        }
                 }
                 else if (breakOut.leftForwardSensor.Read())
                 {
+                    //Debug.Print("SEVENTH");
                     //                    if (lastAction == 1)
                     //                    {
                     //                        //Changed Direction
@@ -331,15 +344,19 @@ namespace GadgeteerCamera
                     //                        currentSpeedL = regimeHighSpeed;
                     //                    }
                     //                    currentSpeedR += (1 - currentSpeedR) * turnDeviation;
-                    currentSpeedR = regimeHighSpeed;
                     //                    currentSpeedL -= (currentSpeedL - regimeSlowSpeed) * turnDeviation;
-                    currentSpeedL = regimeSlowSpeed;
+                    if(lastAction != -1)
+                    {
+                        lastAction = -1;
+                        currentSpeedR = regimeHighSpeedRight;
+                        currentSpeedL = regimeSlowSpeed;
+                        this.motorDriverL298.SetSpeed(MotorDriverL298.Motor.Motor1, currentSpeedR);
+                        this.motorDriverL298.SetSpeed(MotorDriverL298.Motor.Motor2, currentSpeedL);
+                        onCheckpoint = false;
+                    }
                     Debug.Print("[MOTOR] Turn Left - R:" + currentSpeedR + " L:" + currentSpeedL);
-                    this.motorDriverL298.SetSpeed(MotorDriverL298.Motor.Motor1, currentSpeedR);
-                    this.motorDriverL298.SetSpeed(MotorDriverL298.Motor.Motor2, currentSpeedL);
-                    lastAction = -1;
-                    onCheckpoint = false;
-                    
+
+                    /*
                     //slow left
                     if (currentSpeedL > regimeSlowSpeed)
                     {
@@ -352,21 +369,26 @@ namespace GadgeteerCamera
                     {
                         this.motorDriverL298.SetSpeed(MotorDriverL298.Motor.Motor1, regimeHighSpeed);
                         currentSpeedL = regimeHighSpeed;
-                    } 
+                    } */
                 }
                 else
                 {
+                    //Debug.Print("EIGHTH");
                     // Go straight
-                    lastAction = 0;
-                    onCheckpoint = false;
-                    currentSpeedR = regimeHighSpeed;
-                    currentSpeedL = regimeHighSpeed;
-                    this.motorDriverL298.SetSpeed(MotorDriverL298.Motor.Motor1, currentSpeedR);
-                    this.motorDriverL298.SetSpeed(MotorDriverL298.Motor.Motor2, currentSpeedL);
+                    if(lastAction != 0)
+                    {
+                        lastAction = 0;
+                        onCheckpoint = false;
+                        currentSpeedR = regimeHighSpeedRight;
+                        currentSpeedL = regimeHighSpeedLeft;
+                        this.motorDriverL298.SetSpeed(MotorDriverL298.Motor.Motor1, currentSpeedR);
+                        this.motorDriverL298.SetSpeed(MotorDriverL298.Motor.Motor2, currentSpeedL);
+                    }
+                    Debug.Print("[MOTOR] Going Straight");
                 }
             }
         }
-*/
+
         public void moveBackward()
         {
             stop = false;
