@@ -11,8 +11,8 @@ namespace GadgeteerCamera
 
         private Gadgeteer.Modules.GHIElectronics.MotorDriverL298 motorDriverL298;
         //private Gadgeteer.Timer motorTimer = new Gadgeteer.Timer(500); //useful for MoveSpeedTiming()
-        private Gadgeteer.Timer moveTimer = new Gadgeteer.Timer(10);
-        private Gadgeteer.Timer stopTimer = new Gadgeteer.Timer(200);
+        private Gadgeteer.Timer moveTimer = new Gadgeteer.Timer(35);
+       // private Gadgeteer.Timer stopTimer = new Gadgeteer.Timer(200);
         private float currentSpeedR, currentSpeedL;
         private int lastAction; // -1:Left 0:Straight 1:Right
         private BreakOut breakOut;
@@ -25,7 +25,8 @@ namespace GadgeteerCamera
         //Configuration Variables
         private static int limitLine = 2; // Number of lines between QR codes
         private static float regimeSlowSpeed = (float)0.1; // Motor speed in stop state
-        private static float regimeHighSpeed = (float)0.4; // Motor speed in mobile state
+        private static float regimeHighSpeedRight = (float)0.38; // Motor speed in mobile state
+        private static float regimeHighSpeedLeft = (float)0.37; // Motor speed in mobile state
         private static float turnDeviation = (float)0.03; // Deviation factor for speed during turns following line
         // Time to turn by 90 degrees in seconds and milliseconds
         private static int time_s = 0; 
@@ -38,14 +39,24 @@ namespace GadgeteerCamera
         public void setSlowSpeed(float s) { regimeSlowSpeed = s; }
         public float getSlowSpeed() { return regimeSlowSpeed; }
 
-        public void setHighSpeed(float s) { regimeHighSpeed = s; }
-        public float getHighSpeed() { return regimeHighSpeed; }
+        public void setHighSpeed(float l, float r) {
+            regimeHighSpeedLeft = l;
+            regimeHighSpeedRight = r;
+           }
+        public float[] getHighSpeed() {
+            float[] speed = new float[2];
+            speed[0] = regimeHighSpeedLeft;
+            speed[1] = regimeHighSpeedRight;
+            return speed; }
 
         public void setLimitLines(int l) { limitLine = l; }
         public int getLimitLines() { return limitLine; }
 
-        public void setTurnDeviation(float d) { turnDeviation = d; }
-        public float getTurnDeviation() { return turnDeviation; }
+        public void setTurnTime(int t) {
+            time_s = t / 1000;
+            time_ms = t % 1000;
+        }
+        public int getTurnTime() { return time_s*1000+time_ms; }
 
         public bool isMoving() { return moving; }
 
@@ -105,8 +116,8 @@ namespace GadgeteerCamera
                         {
                             Debug.Print("Set Straight");
                             lastAction = 0;
-                            this.motorDriverL298.SetSpeed(MotorDriverL298.Motor.Motor2, regimeHighSpeed);
-                            this.motorDriverL298.SetSpeed(MotorDriverL298.Motor.Motor1, regimeHighSpeed);
+                            this.motorDriverL298.SetSpeed(MotorDriverL298.Motor.Motor2, regimeHighSpeedLeft);
+                            this.motorDriverL298.SetSpeed(MotorDriverL298.Motor.Motor1, regimeHighSpeedRight);
                         }
                         if (!onCheckpoint)
                         {
@@ -129,7 +140,7 @@ namespace GadgeteerCamera
                             //WE ARE ON QR
                             onCheckpoint = false;
                             // TODO use stop timer instead to have decelerated stop
-                            MoveSpeedTiming(regimeHighSpeed, regimeHighSpeed, 0, 200);
+                            MoveSpeedTiming(regimeHighSpeedRight, regimeHighSpeedLeft, 0, 200);
                         }
                     }
                     else
@@ -148,7 +159,7 @@ namespace GadgeteerCamera
                         {
                             lastAction = 1;
                             currentSpeedR = regimeSlowSpeed;
-                            currentSpeedL = regimeHighSpeed;
+                            currentSpeedL = regimeHighSpeedLeft;
                             this.motorDriverL298.SetSpeed(MotorDriverL298.Motor.Motor1, currentSpeedR);
                             this.motorDriverL298.SetSpeed(MotorDriverL298.Motor.Motor2, currentSpeedL);
                             onCheckpoint = false;
@@ -185,7 +196,7 @@ namespace GadgeteerCamera
                     if(lastAction != -1)
                     {
                         lastAction = -1;
-                        currentSpeedR = regimeHighSpeed;
+                        currentSpeedR = regimeHighSpeedRight;
                         currentSpeedL = regimeSlowSpeed;
                         this.motorDriverL298.SetSpeed(MotorDriverL298.Motor.Motor1, currentSpeedR);
                         this.motorDriverL298.SetSpeed(MotorDriverL298.Motor.Motor2, currentSpeedL);
@@ -216,8 +227,8 @@ namespace GadgeteerCamera
                     {
                         lastAction = 0;
                         onCheckpoint = false;
-                        currentSpeedR = regimeHighSpeed;
-                        currentSpeedL = regimeHighSpeed;
+                        currentSpeedR = regimeHighSpeedRight;
+                        currentSpeedL = regimeHighSpeedLeft;
                         this.motorDriverL298.SetSpeed(MotorDriverL298.Motor.Motor1, currentSpeedR);
                         this.motorDriverL298.SetSpeed(MotorDriverL298.Motor.Motor2, currentSpeedL);
                     }
@@ -361,7 +372,7 @@ namespace GadgeteerCamera
             stop = false;
             Debug.Print("[MOTOR] Move Backward");
             int time = 2 * time_s * 1000 + 2 * time_ms;
-            MoveSpeedTiming(regimeHighSpeed, -regimeHighSpeed, time/1000, time%1000);
+            MoveSpeedTiming(regimeHighSpeedRight, -regimeHighSpeedLeft, time/1000, time%1000);
         }
 
         public void moveStop()
@@ -377,11 +388,11 @@ namespace GadgeteerCamera
             stop = false;
             //Debug.Print("[MOTOR] move right");
             //to align the wheels with the QR
-            MoveSpeedTiming(regimeHighSpeed, regimeHighSpeed, 0, 100, -1);
+            //MoveSpeedTiming(regimeHighSpeed, regimeHighSpeed, 0, 100, -1);
             // inserire la proporzione qui e aggiungerla a time
             int movingTime = angle * ((time_s * 1000 + time_ms) / 90);
-            MoveSpeedTiming(-regimeHighSpeed, regimeHighSpeed, movingTime/1000, movingTime%1000, -1);
-            MoveSpeedTiming(-regimeHighSpeed, -regimeHighSpeed, 0, 100, -1);
+            MoveSpeedTiming(-regimeHighSpeedRight, regimeHighSpeedLeft, movingTime/1000, movingTime%1000, -1);
+            //MoveSpeedTiming(-regimeHighSpeed, -regimeHighSpeed, 0, 100, -1);
             move();
         }
 
@@ -389,11 +400,11 @@ namespace GadgeteerCamera
         {
             stop = false;
             //Debug.Print("[MOTOR] move right");
-            MoveSpeedTiming(regimeHighSpeed, regimeHighSpeed, 0, 100, -1);
+            //MoveSpeedTiming(regimeHighSpeed, regimeHighSpeed, 0, 100, -1);
             // inserire la proporzione qui e aggiungerla a time
             int movingTime = angle * ((time_s * 1000 + time_ms) / 90);
-            MoveSpeedTiming(regimeHighSpeed, -regimeHighSpeed, movingTime/1000, movingTime%1000, -1);
-            MoveSpeedTiming(-regimeHighSpeed, -regimeHighSpeed, 0, 100, -1);
+            MoveSpeedTiming(regimeHighSpeedRight, -regimeHighSpeedLeft, movingTime/1000, movingTime%1000, -1);
+            //MoveSpeedTiming(-regimeHighSpeed, -regimeHighSpeed, 0, 100, -1);
             move();
         }
 
@@ -403,7 +414,7 @@ namespace GadgeteerCamera
             moving = true;
             stop = false;
             //MoveSpeedTiming((float)0.3, (float)0.4, 3, 0);
-            MoveSpeedTiming(regimeHighSpeed, regimeHighSpeed, 3, 0);
+            MoveSpeedTiming(regimeHighSpeedRight, regimeHighSpeedLeft, 3, 0);
             moving = false;
 
         }
@@ -412,7 +423,7 @@ namespace GadgeteerCamera
         {
             moving = true;
             stop = false;
-            MoveSpeedTiming(-regimeHighSpeed, regimeHighSpeed, 3, 0);
+            MoveSpeedTiming(-regimeHighSpeedRight, regimeHighSpeedLeft, 3, 0);
             moving = false;
 
         }
@@ -421,7 +432,7 @@ namespace GadgeteerCamera
         {
             moving = true;
             stop = false;
-            MoveSpeedTiming(regimeHighSpeed, -regimeHighSpeed, 3, 0);
+            MoveSpeedTiming(regimeHighSpeedRight, -regimeHighSpeedLeft, 3, 0);
             moving = false;
 
         }
@@ -430,7 +441,7 @@ namespace GadgeteerCamera
         {
             moving = true;
             stop = false;
-            MoveSpeedTiming(-regimeHighSpeed, -regimeHighSpeed, 3, 0);
+            MoveSpeedTiming(-regimeHighSpeedRight, -regimeHighSpeedLeft, 3, 0);
             moving = false;
 
         }

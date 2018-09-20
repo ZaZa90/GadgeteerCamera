@@ -130,7 +130,7 @@ namespace GadgeteerCamera
                 int n = -1;
                 int exp = 1;
                 for (int i = 0; i < picNumber; i++) exp *= n;
-                motor.MoveSpeedTiming(exp*motor.getHighSpeed(), exp*motor.getHighSpeed(), 0, (int)50*(picNumber-1), 1);
+                motor.MoveSpeedTiming(exp*motor.getHighSpeed()[1], exp*motor.getHighSpeed()[0], 0, (int)50*(picNumber-1), 1);
             }
             else
             {
@@ -210,8 +210,8 @@ namespace GadgeteerCamera
         {
             //TODO
             //while (client.isProcessing()) ;
-            string conf = motor.getSlowSpeed().ToString("F2") + "," + motor.getHighSpeed().ToString("F2") + "," + motor.getLimitLines().ToString("F2") + "," + motor.getTurnDeviation().ToString("F2");
-            Debug.Print("[PROGRAM] Send Car's Config: "+ motor.getSlowSpeed().ToString("F2") + "," + motor.getHighSpeed().ToString("F2") + "," + motor.getLimitLines().ToString("F2") + "," + motor.getTurnDeviation().ToString("F2"));
+            string conf = motor.getSlowSpeed().ToString("F2") + "," + motor.getHighSpeed()[0].ToString("F2") + "," + motor.getHighSpeed()[1].ToString("F2") + "," + motor.getTurnTime().ToString();
+            Debug.Print("[PROGRAM] Send Car's Config: "+ motor.getSlowSpeed().ToString("F2") + "," + motor.getHighSpeed()[0].ToString("F2") + "," + motor.getHighSpeed()[1].ToString("F2") + "," + motor.getTurnTime().ToString());
             client.sendConfHTTP(conf);
         }
 
@@ -247,7 +247,8 @@ namespace GadgeteerCamera
             Debug.Print("Current Operation: " + currentOperation);
             if (currentOperation != "NULL")
             {
-                int angle = int.Parse(currentOperation.Substring(1));
+                int angle = -1; 
+                if(currentOperation != "PICT" && currentOperation[0] != 'C' && currentOperation != "STOP") angle= int.Parse(currentOperation.Substring(1));
 
                 Debug.Print("[PROGRAM] Operation: " + currentOperation);
 
@@ -356,17 +357,17 @@ namespace GadgeteerCamera
             if (conf[1] != "0.00")
             {
                 Debug.Print("[PROGRAM] SET HighSpeed to " + (float)Double.Parse(conf[1]));
-                motor.setHighSpeed((float)Double.Parse(conf[1]));
+                motor.setHighSpeed((float)Double.Parse(conf[1]), motor.getHighSpeed()[1]);
             }
             if (conf[2] != "0.00")
             {
                 Debug.Print("[PROGRAM] SET LimitLines to " + conf[2]);
-                motor.setLimitLines((int)Double.Parse(conf[2]));
+                motor.setHighSpeed(motor.getHighSpeed()[0],(float)Double.Parse(conf[2]));
             }
             if (conf[3] != "0.00")
             {
-                Debug.Print("[PROGRAM] SET TurnDeviation to " + (float)Double.Parse(conf[3]));
-                motor.setTurnDeviation((float)Double.Parse(conf[3]));
+                Debug.Print("[PROGRAM] SET TurnTime to " + conf[3]);
+                motor.setTurnTime(int.Parse(conf[3]));
             }
             getOperation();
         }
